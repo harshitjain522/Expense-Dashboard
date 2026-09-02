@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -40,6 +41,7 @@ function generateId(): string {
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const transactionsRef = useRef<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -50,6 +52,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         readCollection<Budget>('budgets'),
       ]);
       setTransactions(storedTransactions);
+      transactionsRef.current = storedTransactions;
 
       // Older versions stored one budget row per category. Those rows are
       // meaningless now and would be counted on top of the overall budget, so
@@ -65,10 +68,21 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const persistTransactions = useCallback(async (next: Transaction[]) => {
-    setTransactions(next);
-    await writeCollection('transactions', next);
-  }, []);
+  /**
+   * Applies an update against the latest transactions rather than whatever the
+   * caller captured at render time. The ref is written synchronously, so two
+   * mutations fired before React re-renders (swiping two rows away in quick
+   * succession, say) still compose instead of the second undoing the first.
+   */
+  const persistTransactions = useCallback(
+    async (updater: (prev: Transaction[]) => Transaction[]) => {
+      const next = updater(transactionsRef.current);
+      transactionsRef.current = next;
+      setTransactions(next);
+      await writeCollection('transactions', next);
+    },
+    []
+  );
 
   const persistBudgets = useCallback(async (next: Budget[]) => {
     setBudgets(next);
@@ -88,36 +102,37 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         createdAt: now,
         updatedAt: now,
       };
-      await persistTransactions([transaction, ...transactions]);
+      await persistTransactions((prev) => [transaction, ...prev]);
     },
-    [transactions, persistTransactions]
+    [persistTransactions]
   );
 
   const updateTransaction = useCallback(
     async (id: string, draft: TransactionDraft) => {
-      const next = transactions.map((t) =>
-        t.id === id
-          ? {
-              ...t,
-              amount: Number(draft.amount) || 0,
-              categoryId: draft.categoryId,
-              date: draft.date,
-              note: draft.note.trim(),
-              paymentMethod: draft.paymentMethod,
-              updatedAt: new Date().toISOString(),
-            }
-          : t
+      await persistTransactions((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                amount: Number(draft.amount) || 0,
+                categoryId: draft.categoryId,
+                date: draft.date,
+                note: draft.note.trim(),
+                paymentMethod: draft.paymentMethod,
+                updatedAt: new Date().toISOString(),
+              }
+            : t
+        )
       );
-      await persistTransactions(next);
     },
-    [transactions, persistTransactions]
+    [persistTransactions]
   );
 
   const deleteTransaction = useCallback(
     async (id: string) => {
-      await persistTransactions(transactions.filter((t) => t.id !== id));
+      await persistTransactions((prev) => prev.filter((t) => t.id !== id));
     },
-    [transactions, persistTransactions]
+    [persistTransactions]
   );
 
   const getTransaction = useCallback(

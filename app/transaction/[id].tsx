@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { CategoryPicker } from '@/components/CategoryPicker';
 import { PAYMENT_METHODS } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
+import { formatDate, fromISODate, toISODate } from '@/utils/format';
 import type { PaymentMethod, TransactionDraft } from '@/types';
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
+function createEmptyDraft(): TransactionDraft {
+  return {
+    amount: '',
+    categoryId: 'food',
+    date: toISODate(new Date()),
+    note: '',
+    paymentMethod: 'Card',
+  };
 }
-
-const EMPTY_DRAFT: TransactionDraft = {
-  amount: '',
-  categoryId: 'food',
-  date: today(),
-  note: '',
-  paymentMethod: 'Card',
-};
 
 export default function TransactionFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -25,7 +25,8 @@ export default function TransactionFormScreen() {
   const isNew = id === 'new';
   const { getTransaction, addTransaction, updateTransaction, deleteTransaction } = useFinance();
 
-  const [draft, setDraft] = useState<TransactionDraft>(EMPTY_DRAFT);
+  const [draft, setDraft] = useState<TransactionDraft>(createEmptyDraft);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({ title: isNew ? 'Add Transaction' : 'Edit Transaction' });
@@ -48,10 +49,24 @@ export default function TransactionFormScreen() {
     setDraft((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleDateChange(event: DateTimePickerEvent, selected?: Date) {
+    // Android shows a native dialog that closes itself; iOS renders inline and
+    // stays open until the user taps Done.
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'set' && selected) {
+      updateField('date', toISODate(selected));
+    }
+  }
+
   async function handleSave() {
     const amountNumber = Number(draft.amount);
     if (!draft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) {
       Alert.alert('Invalid amount', 'Please enter an amount greater than 0.');
+      return;
+    }
+    // Both sides are YYYY-MM-DD, so a plain string compare orders them correctly.
+    if (draft.date > toISODate(new Date())) {
+      Alert.alert('Invalid date', 'You cannot add a transaction dated in the future.');
       return;
     }
     if (isNew) {
@@ -97,13 +112,38 @@ export default function TransactionFormScreen() {
       </View>
 
       <Text className="text-ink-muted text-xs font-medium mb-1.5">DATE</Text>
-      <TextInput
-        value={draft.date}
-        onChangeText={(v) => updateField('date', v)}
-        placeholder="YYYY-MM-DD"
-        placeholderTextColor="#A0A0AC"
-        className="border border-border rounded-xl px-4 py-3 text-ink text-base mb-5 bg-surface"
-      />
+      <Pressable
+        onPress={() => setShowDatePicker(true)}
+        className="flex-row items-center justify-between border border-border rounded-xl px-4 py-3 mb-5 bg-surface"
+      >
+        <Text className="text-ink text-base">{formatDate(draft.date)}</Text>
+        <Text className="text-base">📅</Text>
+      </Pressable>
+
+      {showDatePicker &&
+        (Platform.OS === 'ios' ? (
+          <View className="bg-surface border border-border rounded-xl mb-5 overflow-hidden">
+            <DateTimePicker
+              value={fromISODate(draft.date)}
+              mode="date"
+              display="spinner"
+              onChange={handleDateChange}
+            />
+            <Pressable
+              onPress={() => setShowDatePicker(false)}
+              className="items-center py-3 border-t border-border"
+            >
+              <Text className="text-accent font-semibold">Done</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <DateTimePicker
+            value={fromISODate(draft.date)}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        ))}
 
       <Text className="text-ink-muted text-xs font-medium mb-1.5">PAYMENT METHOD</Text>
       <View className="flex-row flex-wrap mb-5" style={{ gap: 8 }}>

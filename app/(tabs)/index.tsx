@@ -54,7 +54,9 @@ export default function DashboardScreen() {
     return Array.from(totals.entries())
       .map(([categoryId, value]) => {
         const category = getCategory(categoryId);
-        return { value, color: category.color, text: category.label };
+        // Keep the id around: unknown categories all fall back to "Other", so
+        // the label alone is not a unique key.
+        return { categoryId, value, color: category.color, text: category.label };
       })
       .sort((a, b) => b.value - a.value);
   }, [monthTransactions]);
@@ -177,7 +179,7 @@ export default function DashboardScreen() {
               />
               <View className="flex-row flex-wrap mt-4 justify-center" style={{ gap: 12 }}>
                 {pieData.map((slice) => (
-                  <View key={slice.text} className="flex-row items-center">
+                  <View key={slice.categoryId} className="flex-row items-center">
                     <View
                       className="w-2.5 h-2.5 rounded-full mr-1.5"
                       style={{ backgroundColor: slice.color }}

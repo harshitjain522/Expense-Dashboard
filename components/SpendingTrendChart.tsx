@@ -54,7 +54,10 @@ export function SpendingTrendChart({ data, selectedMonth, onSelectMonth }: Spend
         yAxisThickness={0}
         yAxisTextStyle={{ color: AXIS_TEXT_COLOR, fontSize: 10 }}
         xAxisLabelTextStyle={{ color: AXIS_TEXT_COLOR, fontSize: 10 }}
-        formatYLabel={(label: string) => compactAmount(Number(label))}
+        formatYLabel={(label: string) => {
+          const value = Number(label);
+          return Number.isFinite(value) ? compactAmount(value) : label;
+        }}
         disableScroll
       />
     </View>

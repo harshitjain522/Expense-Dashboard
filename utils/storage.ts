@@ -32,7 +32,3 @@ export async function writeCollection<T>(key: StorageKey, value: T[]): Promise<v
     console.warn(`[storage] failed to write "${key}"`, error);
   }
 }
-
-export async function clearAll(): Promise<void> {
-  await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
-}

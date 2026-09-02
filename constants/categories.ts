@@ -15,7 +15,7 @@ export const CATEGORIES: Category[] = [
   { id: 'other', label: 'Other', icon: '📦', color: '#6B7280' },
 ];
 
-export const CATEGORY_MAP: Record<string, Category> = CATEGORIES.reduce(
+const CATEGORY_MAP: Record<string, Category> = CATEGORIES.reduce(
   (acc, category) => {
     acc[category.id] = category;
     return acc;

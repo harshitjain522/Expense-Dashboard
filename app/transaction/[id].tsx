@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -27,23 +27,28 @@ export default function TransactionFormScreen() {
 
   const [draft, setDraft] = useState<TransactionDraft>(createEmptyDraft);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const hydrated = useRef(false);
+
+  const existing = isNew ? undefined : getTransaction(id);
 
   useEffect(() => {
     navigation.setOptions({ title: isNew ? 'Add Transaction' : 'Edit Transaction' });
-    if (!isNew) {
-      const existing = getTransaction(id);
-      if (existing) {
-        setDraft({
-          amount: String(existing.amount),
-          categoryId: existing.categoryId,
-          date: existing.date,
-          note: existing.note,
-          paymentMethod: existing.paymentMethod,
-        });
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [navigation, isNew]);
+
+  // Transactions load asynchronously, so the record may not exist yet on the
+  // first render. Hydrate whenever it first appears, but only once, so later
+  // writes to the store can't wipe out edits in progress.
+  useEffect(() => {
+    if (hydrated.current || !existing) return;
+    hydrated.current = true;
+    setDraft({
+      amount: String(existing.amount),
+      categoryId: existing.categoryId,
+      date: existing.date,
+      note: existing.note,
+      paymentMethod: existing.paymentMethod,
+    });
+  }, [existing]);
 
   function updateField<K extends keyof TransactionDraft>(field: K, value: TransactionDraft[K]) {
     setDraft((prev) => ({ ...prev, [field]: value }));

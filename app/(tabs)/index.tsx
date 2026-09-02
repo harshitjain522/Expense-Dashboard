@@ -10,27 +10,23 @@ import { getCategory } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
 import { currentMonthKey, formatCurrency, monthLabel, monthKey } from '@/utils/format';
 
-const TOTAL_BUDGET_KEY = 'total';
-
 export default function DashboardScreen() {
-  const { transactions, monthlySpent, monthlyBudgetTotal, setBudget, deleteTransaction, isLoading } =
+  const { transactions, monthlySpent, totalBudget, setTotalBudget, deleteTransaction, isLoading } =
     useFinance();
   const [editingBudget, setEditingBudget] = useState(false);
   const [draft, setDraft] = useState('');
 
   const key = currentMonthKey();
   const spent = monthlySpent(key);
-  const budgetTotal = monthlyBudgetTotal();
-  const remaining = budgetTotal - spent;
+  const remaining = totalBudget - spent;
 
   function openBudgetEditor() {
-    setDraft(budgetTotal > 0 ? String(budgetTotal) : '');
+    setDraft(totalBudget > 0 ? String(totalBudget) : '');
     setEditingBudget(true);
   }
 
   async function saveBudget() {
-    const value = Number(draft);
-    await setBudget(TOTAL_BUDGET_KEY, Number.isFinite(value) && value > 0 ? value : 0);
+    await setTotalBudget(Number(draft));
     setEditingBudget(false);
   }
 
@@ -88,7 +84,7 @@ export default function DashboardScreen() {
             className="flex-1 bg-surface rounded-2xl p-4 border border-border"
           >
             <Text className="text-ink-muted text-xs">Budget remaining</Text>
-            {budgetTotal > 0 ? (
+            {totalBudget > 0 ? (
               <Text
                 className="text-xl font-bold mt-1"
                 style={{ color: remaining < 0 ? '#DC2626' : '#111114' }}

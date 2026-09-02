@@ -11,20 +11,25 @@ import { readCollection, writeCollection } from '@/utils/storage';
 import { currentMonthKey, monthKey } from '@/utils/format';
 import type { Budget, Transaction, TransactionDraft, TransactionFilters } from '@/types';
 
+/**
+ * Budgets are persisted as a list of `{ categoryId, monthlyLimit }` rows, but
+ * the app now tracks a single overall monthly budget rather than one per
+ * category. That budget lives in the one row keyed by this id.
+ */
+export const TOTAL_BUDGET_KEY = 'total';
+
 interface FinanceContextValue {
   transactions: Transaction[];
-  budgets: Budget[];
   isLoading: boolean;
   addTransaction: (draft: TransactionDraft) => Promise<void>;
   updateTransaction: (id: string, draft: TransactionDraft) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   getTransaction: (id: string) => Transaction | undefined;
-  setBudget: (categoryId: string, monthlyLimit: number) => Promise<void>;
-  getBudget: (categoryId: string) => Budget | undefined;
   filterTransactions: (filters: TransactionFilters) => Transaction[];
   monthlySpent: (key?: string) => number;
   categorySpent: (categoryId: string, key?: string) => number;
-  monthlyBudgetTotal: () => number;
+  totalBudget: number;
+  setTotalBudget: (amount: number) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextValue | undefined>(undefined);
@@ -45,7 +50,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         readCollection<Budget>('budgets'),
       ]);
       setTransactions(storedTransactions);
-      setBudgets(storedBudgets);
+
+      // Older versions stored one budget row per category. Those rows are
+      // meaningless now and would be counted on top of the overall budget, so
+      // drop everything except the single "total" row.
+      const totalRow = storedBudgets.find((b) => b.categoryId === TOTAL_BUDGET_KEY);
+      const migrated = totalRow ? [totalRow] : [];
+      setBudgets(migrated);
+      if (migrated.length !== storedBudgets.length) {
+        await writeCollection('budgets', migrated);
+      }
+
       setIsLoading(false);
     })();
   }, []);
@@ -110,20 +125,14 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [transactions]
   );
 
-  const setBudget = useCallback(
-    async (categoryId: string, monthlyLimit: number) => {
-      const exists = budgets.some((b) => b.categoryId === categoryId);
-      const next = exists
-        ? budgets.map((b) => (b.categoryId === categoryId ? { ...b, monthlyLimit } : b))
-        : [...budgets, { categoryId, monthlyLimit }];
-      await persistBudgets(next);
+  // Always writes exactly one row, so repeated edits replace the budget rather
+  // than accumulating alongside it.
+  const setTotalBudget = useCallback(
+    async (amount: number) => {
+      const monthlyLimit = Number.isFinite(amount) && amount > 0 ? amount : 0;
+      await persistBudgets([{ categoryId: TOTAL_BUDGET_KEY, monthlyLimit }]);
     },
-    [budgets, persistBudgets]
-  );
-
-  const getBudget = useCallback(
-    (categoryId: string) => budgets.find((b) => b.categoryId === categoryId),
-    [budgets]
+    [persistBudgets]
   );
 
   const filterTransactions = useCallback(
@@ -160,40 +169,37 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [transactions]
   );
 
-  const monthlyBudgetTotal = useCallback(() => {
-    return budgets.reduce((sum, b) => sum + b.monthlyLimit, 0);
-  }, [budgets]);
+  const totalBudget = useMemo(
+    () => budgets.find((b) => b.categoryId === TOTAL_BUDGET_KEY)?.monthlyLimit ?? 0,
+    [budgets]
+  );
 
   const value = useMemo<FinanceContextValue>(
     () => ({
       transactions,
-      budgets,
       isLoading,
       addTransaction,
       updateTransaction,
       deleteTransaction,
       getTransaction,
-      setBudget,
-      getBudget,
       filterTransactions,
       monthlySpent,
       categorySpent,
-      monthlyBudgetTotal,
+      totalBudget,
+      setTotalBudget,
     }),
     [
       transactions,
-      budgets,
       isLoading,
       addTransaction,
       updateTransaction,
       deleteTransaction,
       getTransaction,
-      setBudget,
-      getBudget,
       filterTransactions,
       monthlySpent,
       categorySpent,
-      monthlyBudgetTotal,
+      totalBudget,
+      setTotalBudget,
     ]
   );
 

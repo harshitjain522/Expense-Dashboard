@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Text, View, Pressable } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { getCategory } from '@/constants/categories';
 import { formatCurrency, formatDateShort } from '@/utils/format';
@@ -14,36 +14,36 @@ interface TransactionItemProps {
 }
 
 export function TransactionItem({ transaction, onPress, onEdit, onDelete }: TransactionItemProps) {
-  const swipeableRef = useRef<Swipeable>(null);
   const category = getCategory(transaction.categoryId);
 
-  function renderRightActions() {
-    return (
-      <View className="flex-row items-stretch">
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onEdit?.();
-          }}
-          className="w-16 items-center justify-center bg-accent"
-        >
-          <Text className="text-white text-xs font-semibold">Edit</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => {
-            swipeableRef.current?.close();
-            onDelete?.();
-          }}
-          className="w-16 items-center justify-center bg-danger"
-        >
-          <Text className="text-white text-xs font-semibold">Delete</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
   return (
-    <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
+    <ReanimatedSwipeable
+      overshootRight={false}
+      // The third argument hands back the swipeable's own methods, so closing
+      // the row needs no ref of its own.
+      renderRightActions={(_progress, _translation, swipeable) => (
+        <View className="flex-row items-stretch">
+          <Pressable
+            onPress={() => {
+              swipeable.close();
+              onEdit?.();
+            }}
+            className="w-16 items-center justify-center bg-accent"
+          >
+            <Text className="text-white text-xs font-semibold">Edit</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              swipeable.close();
+              onDelete?.();
+            }}
+            className="w-16 items-center justify-center bg-danger"
+          >
+            <Text className="text-white text-xs font-semibold">Delete</Text>
+          </Pressable>
+        </View>
+      )}
+    >
       <Pressable
         onPress={onPress}
         className="flex-row items-center bg-surface px-4 py-3 border-b border-border"
@@ -66,6 +66,6 @@ export function TransactionItem({ transaction, onPress, onEdit, onDelete }: Tran
           {formatCurrency(transaction.amount)}
         </Text>
       </Pressable>
-    </Swipeable>
+    </ReanimatedSwipeable>
   );
 }

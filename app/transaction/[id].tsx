@@ -127,6 +127,7 @@ export default function TransactionFormScreen() {
               value={fromISODate(draft.date)}
               mode="date"
               display="spinner"
+              maximumDate={new Date()}
               onChange={handleDateChange}
             />
             <Pressable
@@ -141,6 +142,7 @@ export default function TransactionFormScreen() {
             value={fromISODate(draft.date)}
             mode="date"
             display="default"
+            maximumDate={new Date()}
             onChange={handleDateChange}
           />
         ))}

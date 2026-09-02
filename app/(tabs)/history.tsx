@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { TransactionItem } from '@/components/TransactionItem';
 import { CATEGORIES } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, toISODate } from '@/utils/format';
 
 type DateRangeOption = 'all' | '7d' | '30d' | 'month';
 
@@ -23,13 +23,12 @@ function rangeToDates(option: DateRangeOption): { startDate?: string; endDate?: 
   const now = new Date();
   if (option === 'all') return {};
   if (option === 'month') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { startDate: start.toISOString().slice(0, 10) };
+    return { startDate: toISODate(new Date(now.getFullYear(), now.getMonth(), 1)) };
   }
   const days = option === '7d' ? 7 : 30;
   const start = new Date(now);
   start.setDate(start.getDate() - days);
-  return { startDate: start.toISOString().slice(0, 10) };
+  return { startDate: toISODate(start) };
 }
 
 export default function HistoryScreen() {

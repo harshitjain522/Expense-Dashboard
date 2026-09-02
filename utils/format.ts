@@ -47,3 +47,23 @@ export function monthLabel(key: string): string {
   const date = new Date(year, month - 1, 1);
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
+
+/** Short month name for chart axes, e.g. "Sep". */
+export function monthLabelShort(key: string): string {
+  const [year, month] = key.split('-').map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString('en-IN', { month: 'short' });
+}
+
+/** Moves a YYYY-MM key by `delta` months, rolling the year over as needed. */
+export function shiftMonthKey(key: string, delta: number): string {
+  const [year, month] = key.split('-').map(Number);
+  return monthKey(toISODate(new Date(year, month - 1 + delta, 1)));
+}
+
+/** Abbreviates large amounts for chart axis ticks, e.g. 1500 -> "1.5k". */
+export function compactAmount(value: number): string {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  }
+  return String(Math.round(value));
+}

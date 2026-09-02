@@ -5,18 +5,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PieChart } from 'react-native-gifted-charts';
 
 import { EmptyState } from '@/components/EmptyState';
+import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { TransactionItem } from '@/components/TransactionItem';
 import { getCategory } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
-import { currentMonthKey, formatCurrency, monthLabel, monthKey } from '@/utils/format';
+import {
+  currentMonthKey,
+  formatCurrency,
+  monthLabel,
+  monthLabelShort,
+  monthKey,
+  shiftMonthKey,
+} from '@/utils/format';
+
+const TREND_MONTHS = 6;
 
 export default function DashboardScreen() {
   const { transactions, monthlySpent, totalBudget, setTotalBudget, deleteTransaction, isLoading } =
     useFinance();
   const [editingBudget, setEditingBudget] = useState(false);
   const [draft, setDraft] = useState('');
+  const [key, setKey] = useState(currentMonthKey);
 
-  const key = currentMonthKey();
+  const isCurrentMonth = key >= currentMonthKey();
   const spent = monthlySpent(key);
   const remaining = totalBudget - spent;
 
@@ -48,7 +59,19 @@ export default function DashboardScreen() {
       .sort((a, b) => b.value - a.value);
   }, [monthTransactions]);
 
-  const recent = transactions.slice(0, 5);
+  // Six months ending at the month being viewed, so the window follows
+  // navigation instead of staying pinned to today.
+  const trendData = useMemo(
+    () =>
+      Array.from({ length: TREND_MONTHS }, (_, i) => {
+        const month = shiftMonthKey(key, i - (TREND_MONTHS - 1));
+        return { monthKey: month, label: monthLabelShort(month), value: monthlySpent(month) };
+      }),
+    [key, monthlySpent]
+  );
+
+  const hasTrendData = trendData.some((point) => point.value > 0);
+  const recent = monthTransactions.slice(0, 5);
 
   if (isLoading) {
     return (
@@ -61,11 +84,8 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-          <View>
-            <Text className="text-ink-muted text-xs">{monthLabel(key)}</Text>
-            <Text className="text-ink text-2xl font-bold mt-0.5">Dashboard</Text>
-          </View>
+        <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
+          <Text className="text-ink text-2xl font-bold">Dashboard</Text>
           <Pressable
             onPress={() => router.push('/transaction/new')}
             className="w-11 h-11 rounded-full bg-accent items-center justify-center"
@@ -74,9 +94,36 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
+        <View className="px-5 pb-1 flex-row items-center">
+          <Pressable
+            onPress={() => setKey(shiftMonthKey(key, -1))}
+            hitSlop={10}
+            className="w-8 h-8 rounded-full border border-border bg-surface items-center justify-center"
+          >
+            <Text className="text-ink-muted text-base leading-none">‹</Text>
+          </Pressable>
+          <Text className="text-ink text-sm font-medium mx-3">{monthLabel(key)}</Text>
+          <Pressable
+            onPress={() => setKey(shiftMonthKey(key, 1))}
+            disabled={isCurrentMonth}
+            hitSlop={10}
+            style={{ opacity: isCurrentMonth ? 0.35 : 1 }}
+            className="w-8 h-8 rounded-full border border-border bg-surface items-center justify-center"
+          >
+            <Text className="text-ink-muted text-base leading-none">›</Text>
+          </Pressable>
+          {!isCurrentMonth && (
+            <Pressable onPress={() => setKey(currentMonthKey())} hitSlop={10} className="ml-auto">
+              <Text className="text-accent text-xs font-medium">This month</Text>
+            </Pressable>
+          )}
+        </View>
+
         <View className="flex-row px-5 mt-3" style={{ gap: 12 }}>
           <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
-            <Text className="text-ink-muted text-xs">Spent this month</Text>
+            <Text className="text-ink-muted text-xs">
+              {isCurrentMonth ? 'Spent this month' : 'Spent'}
+            </Text>
             <Text className="text-ink text-xl font-bold mt-1">{formatCurrency(spent)}</Text>
           </View>
           <Pressable
@@ -95,6 +142,18 @@ export default function DashboardScreen() {
               <Text className="text-accent text-sm font-semibold mt-1.5">Tap to set budget</Text>
             )}
           </Pressable>
+        </View>
+
+        <View className="mx-5 mt-4 bg-surface rounded-2xl p-4 border border-border">
+          <Text className="text-ink text-[15px] font-semibold">Spending trend</Text>
+          <Text className="text-ink-muted text-xs mt-0.5">
+            Last {TREND_MONTHS} months · tap a bar to jump to that month
+          </Text>
+          {hasTrendData ? (
+            <SpendingTrendChart data={trendData} selectedMonth={key} onSelectMonth={setKey} />
+          ) : (
+            <EmptyState icon="📈" title="Nothing to chart yet" subtitle="Add transactions to see your trend" />
+          )}
         </View>
 
         <View className="mx-5 mt-4 bg-surface rounded-2xl p-4 border border-border">

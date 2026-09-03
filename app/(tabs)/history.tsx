@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryFilterChip } from '@/components/CategoryPicker';
 import { EmptyState } from '@/components/EmptyState';
+import { SettingsButton } from '@/components/SettingsButton';
 import { TransactionItem } from '@/components/TransactionItem';
 import { CATEGORIES } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
@@ -53,8 +54,9 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-5 pt-4 pb-2">
+      <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
         <Text className="text-ink text-2xl font-bold">History</Text>
+        <SettingsButton />
       </View>
 
       <View className="px-5">

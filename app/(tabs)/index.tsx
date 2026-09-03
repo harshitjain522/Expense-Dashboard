@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PieChart } from 'react-native-gifted-charts';
 
 import { EmptyState } from '@/components/EmptyState';
+import { SettingsButton } from '@/components/SettingsButton';
 import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { TransactionItem } from '@/components/TransactionItem';
 import { getCategory } from '@/constants/categories';
@@ -86,8 +87,9 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
-        <View className="px-5 pt-4 pb-1">
+        <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
           <Text className="text-ink text-2xl font-bold">Dashboard</Text>
+          <SettingsButton />
         </View>
 
         <View className="px-5 pb-1 flex-row items-center">

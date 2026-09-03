@@ -1,4 +1,3 @@
-import React from 'react';
 import { Text, View, Pressable } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
@@ -19,28 +18,17 @@ export function TransactionItem({ transaction, onPress, onEdit, onDelete }: Tran
   return (
     <ReanimatedSwipeable
       overshootRight={false}
-      // The third argument hands back the swipeable's own methods, so closing
-      // the row needs no ref of its own.
-      renderRightActions={(_progress, _translation, swipeable) => (
+      renderRightActions={(_p, _t, swipeable) => (
         <View className="flex-row items-stretch">
-          <Pressable
-            onPress={() => {
-              swipeable.close();
-              onEdit?.();
-            }}
-            className="w-16 items-center justify-center bg-accent"
-          >
-            <Text className="text-white text-xs font-semibold">Edit</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              swipeable.close();
-              onDelete?.();
-            }}
-            className="w-16 items-center justify-center bg-danger"
-          >
-            <Text className="text-white text-xs font-semibold">Delete</Text>
-          </Pressable>
+          {([['Edit', 'bg-accent', onEdit], ['Delete', 'bg-danger', onDelete]] as const).map(([label, bg, fn]) => (
+            <Pressable
+              key={label}
+              onPress={() => { swipeable.close(); fn?.(); }}
+              className={`w-16 items-center justify-center ${bg}`}
+            >
+              <Text className="text-white text-xs font-semibold">{label}</Text>
+            </Pressable>
+          ))}
         </View>
       )}
     >

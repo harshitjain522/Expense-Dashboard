@@ -85,15 +85,9 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
-        <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
+      <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
+        <View className="px-5 pt-4 pb-1">
           <Text className="text-ink text-2xl font-bold">Dashboard</Text>
-          <Pressable
-            onPress={() => router.push('/transaction/new')}
-            className="w-11 h-11 rounded-full bg-accent items-center justify-center"
-          >
-            <Text className="text-white text-xl leading-none">+</Text>
-          </Pressable>
         </View>
 
         <View className="px-5 pb-1 flex-row items-center">
@@ -216,6 +210,16 @@ export default function DashboardScreen() {
           )}
         </View>
       </ScrollView>
+
+      <Pressable
+        onPress={() => router.push('/transaction/new')}
+        accessibilityRole="button"
+        accessibilityLabel="Add transaction"
+        className="absolute bottom-5 right-5 w-14 h-14 rounded-full bg-accent items-center justify-center"
+        style={{ elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}
+      >
+        <Text className="text-white text-2xl leading-none">+</Text>
+      </Pressable>
 
       <Modal
         visible={editingBudget}

@@ -6,6 +6,7 @@ import {
   MaterialTopTabNavigationOptions,
 } from '@react-navigation/material-top-tabs';
 import { ParamListBase, TabNavigationState } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { Navigator } = createMaterialTopTabNavigator();
 
@@ -21,6 +22,8 @@ function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const bottom = Math.max(useSafeAreaInsets().bottom, 8);
+
   return (
     <Tabs
       tabBarPosition="bottom"
@@ -34,9 +37,9 @@ export default function TabsLayout() {
           borderTopWidth: 1,
           borderTopColor: '#E7E7EC',
           backgroundColor: '#FFFFFF',
-          height: 84,
+          height: 56 + bottom,
           paddingTop: 8,
-          paddingBottom: 24,
+          paddingBottom: bottom,
           elevation: 0,
           shadowOpacity: 0,
         },

@@ -91,7 +91,7 @@ export function LockProvider({ children }: { children: React.ReactNode }) {
     if (prompting.current) return;
     prompting.current = true;
     try {
-      if (await authenticate('Unlock Expense Dashboard')) setLocked(false);
+      if (await authenticate('Unlock Spent')) setLocked(false);
     } finally {
       prompting.current = false;
     }

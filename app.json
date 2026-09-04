@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Expense-Dashboard",
-    "slug": "Expense-Dashboard",
-    "scheme": "expensedashboard",
+    "name": "Spent",
+    "slug": "spent",
+    "scheme": "spent",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#EBEDE6",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -28,7 +28,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Allow Expense Dashboard to unlock with Face ID"
+          "faceIDPermission": "Allow Spent to unlock with Face ID"
         }
       ]
     ]

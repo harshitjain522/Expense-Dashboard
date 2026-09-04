@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryFilterChip } from '@/components/CategoryPicker';
@@ -35,10 +35,21 @@ function rangeToDates(option: DateRangeOption): { startDate?: string; endDate?: 
 
 export default function HistoryScreen() {
   const { filterTransactions, deleteTransaction, formatAmount } = useFinance();
+  const navigation = useNavigation();
   const { colors } = useTheme();
   const [query, setQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [range, setRange] = useState<DateRangeOption>('all');
+
+  // The tab pager reads horizontal drags too, so it swallows these filter
+  // strips and changes tab instead of scrolling them. Hand the gesture to the
+  // strip while a finger is down, and give it back once the scroll settles.
+  const holdSwipe = {
+    onTouchStart: () => navigation.setOptions({ swipeEnabled: false }),
+    onTouchEnd: () => navigation.setOptions({ swipeEnabled: true }),
+    onTouchCancel: () => navigation.setOptions({ swipeEnabled: true }),
+    onMomentumScrollEnd: () => navigation.setOptions({ swipeEnabled: true }),
+  };
 
   const dates = useMemo(() => rangeToDates(range), [range]);
 
@@ -74,6 +85,7 @@ export default function HistoryScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        {...holdSwipe}
         style={{ flexGrow: 0 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, alignItems: 'center' }}
       >
@@ -90,6 +102,7 @@ export default function HistoryScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        {...holdSwipe}
         style={{ flexGrow: 0 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 15, alignItems: 'center' }}
       >

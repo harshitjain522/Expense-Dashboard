@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
+import { useTheme } from '@/context/ThemeContext';
 import { compactAmount } from '@/utils/format';
 
 /**
@@ -11,10 +12,6 @@ import { compactAmount } from '@/utils/format';
  * card surface, and identity never rests on colour alone - the x-axis names
  * every month and the selected total is repeated in the stat tile above.
  */
-const SELECTED_COLOR = '#4F46E5';
-const CONTEXT_COLOR = '#6B6B76';
-const AXIS_COLOR = '#E7E7EC';
-const AXIS_TEXT_COLOR = '#6B6B76';
 
 export interface TrendPoint {
   monthKey: string;
@@ -29,10 +26,11 @@ interface SpendingTrendChartProps {
 }
 
 export function SpendingTrendChart({ data, selectedMonth, onSelectMonth }: SpendingTrendChartProps) {
+  const { colors } = useTheme();
   const barData = data.map((point) => ({
     value: point.value,
     label: point.label,
-    frontColor: point.monthKey === selectedMonth ? SELECTED_COLOR : CONTEXT_COLOR,
+    frontColor: point.monthKey === selectedMonth ? colors.accent : colors['ink-muted'],
     onPress: () => onSelectMonth(point.monthKey),
   }));
 
@@ -48,12 +46,12 @@ export function SpendingTrendChart({ data, selectedMonth, onSelectMonth }: Spend
         barBorderRadius={4}
         noOfSections={3}
         rulesType="solid"
-        rulesColor={AXIS_COLOR}
+        rulesColor={colors.border}
         xAxisThickness={1}
-        xAxisColor={AXIS_COLOR}
+        xAxisColor={colors.border}
         yAxisThickness={0}
-        yAxisTextStyle={{ color: AXIS_TEXT_COLOR, fontSize: 10 }}
-        xAxisLabelTextStyle={{ color: AXIS_TEXT_COLOR, fontSize: 10 }}
+        yAxisTextStyle={{ color: colors['ink-muted'], fontSize: 10 }}
+        xAxisLabelTextStyle={{ color: colors['ink-muted'], fontSize: 10 }}
         formatYLabel={(label: string) => {
           const value = Number(label);
           return Number.isFinite(value) ? compactAmount(value) : label;

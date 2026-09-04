@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryFilterChip } from '@/components/CategoryPicker';
 import { EmptyState } from '@/components/EmptyState';
+import { useTheme } from '@/context/ThemeContext';
 import { SettingsButton } from '@/components/SettingsButton';
 import { TransactionItem } from '@/components/TransactionItem';
 import { CATEGORIES } from '@/constants/categories';
@@ -34,6 +35,7 @@ function rangeToDates(option: DateRangeOption): { startDate?: string; endDate?: 
 
 export default function HistoryScreen() {
   const { filterTransactions, deleteTransaction } = useFinance();
+  const { colors } = useTheme();
   const [query, setQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [range, setRange] = useState<DateRangeOption>('all');
@@ -64,7 +66,7 @@ export default function HistoryScreen() {
           value={query}
           onChangeText={setQuery}
           placeholder="Search by note…"
-          placeholderTextColor="#A0A0AC"
+          placeholderTextColor={colors['ink-faint']}
           className="border border-border rounded-xl px-4 py-2.5 text-ink text-sm bg-surface"
         />
       </View>

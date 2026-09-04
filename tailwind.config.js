@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+// Colours resolve through CSS variables set by ThemeProvider's `vars()` call,
+// so a class like `bg-surface` follows the active scheme with no `dark:` twin.
 module.exports = {
   content: ['./app/**/*.{js,jsx,ts,tsx}', './components/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
@@ -6,29 +8,29 @@ module.exports = {
     extend: {
       colors: {
         accent: {
-          DEFAULT: '#4F46E5',
-          light: '#EEF2FF',
-          dark: '#3730A3',
+          DEFAULT: 'var(--color-accent)',
+          light: 'var(--color-accent-light)',
+          dark: 'var(--color-accent-dark)',
         },
-        surface: '#FFFFFF',
-        background: '#F7F7F9',
-        border: '#E7E7EC',
+        surface: 'var(--color-surface)',
+        background: 'var(--color-background)',
+        border: 'var(--color-border)',
         ink: {
-          DEFAULT: '#111114',
-          muted: '#6B6B76',
-          faint: '#A0A0AC',
+          DEFAULT: 'var(--color-ink)',
+          muted: 'var(--color-ink-muted)',
+          faint: 'var(--color-ink-faint)',
         },
         danger: {
-          DEFAULT: '#DC2626',
-          light: '#FEF2F2',
+          DEFAULT: 'var(--color-danger)',
+          light: 'var(--color-danger-light)',
         },
         warning: {
-          DEFAULT: '#D97706',
-          light: '#FFFBEB',
+          DEFAULT: 'var(--color-warning)',
+          light: 'var(--color-warning-light)',
         },
         success: {
-          DEFAULT: '#059669',
-          light: '#ECFDF5',
+          DEFAULT: 'var(--color-success)',
+          light: 'var(--color-success-light)',
         },
       },
     },

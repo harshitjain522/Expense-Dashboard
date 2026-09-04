@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PieChart } from 'react-native-gifted-charts';
@@ -10,6 +10,7 @@ import { SpendingTrendChart } from '@/components/SpendingTrendChart';
 import { TransactionItem } from '@/components/TransactionItem';
 import { getCategory } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
+import { useTheme } from '@/context/ThemeContext';
 import {
   currentMonthKey,
   formatCurrency,
@@ -22,25 +23,13 @@ import {
 const TREND_MONTHS = 6;
 
 export default function DashboardScreen() {
-  const { transactions, monthlySpent, totalBudget, setTotalBudget, deleteTransaction, isLoading } =
-    useFinance();
-  const [editingBudget, setEditingBudget] = useState(false);
-  const [draft, setDraft] = useState('');
+  const { transactions, monthlySpent, totalBudget, deleteTransaction, isLoading } = useFinance();
+  const { colors } = useTheme();
   const [key, setKey] = useState(currentMonthKey);
 
   const isCurrentMonth = key >= currentMonthKey();
   const spent = monthlySpent(key);
   const remaining = totalBudget - spent;
-
-  function openBudgetEditor() {
-    setDraft(totalBudget > 0 ? String(totalBudget) : '');
-    setEditingBudget(true);
-  }
-
-  async function saveBudget() {
-    await setTotalBudget(Number(draft));
-    setEditingBudget(false);
-  }
 
   const monthTransactions = useMemo(
     () => transactions.filter((t) => monthKey(t.date) === key),
@@ -124,22 +113,19 @@ export default function DashboardScreen() {
             </Text>
             <Text className="text-ink text-xl font-bold mt-1">{formatCurrency(spent)}</Text>
           </View>
-          <Pressable
-            onPress={openBudgetEditor}
-            className="flex-1 bg-surface rounded-2xl p-4 border border-border"
-          >
+          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
             <Text className="text-ink-muted text-xs">Budget remaining</Text>
             {totalBudget > 0 ? (
               <Text
                 className="text-xl font-bold mt-1"
-                style={{ color: remaining < 0 ? '#DC2626' : '#111114' }}
+                style={{ color: remaining < 0 ? colors.danger : colors.ink }}
               >
                 {formatCurrency(remaining)}
               </Text>
             ) : (
-              <Text className="text-accent text-sm font-semibold mt-1.5">Tap to set budget</Text>
+              <Text className="text-ink-faint text-sm font-semibold mt-1.5">Set one in Settings</Text>
             )}
-          </Pressable>
+          </View>
         </View>
 
         <View className="mx-5 mt-4 bg-surface rounded-2xl p-4 border border-border">
@@ -165,7 +151,7 @@ export default function DashboardScreen() {
                 donut
                 radius={80}
                 innerRadius={52}
-                innerCircleColor="#FFFFFF"
+                innerCircleColor={colors.surface}
                 centerLabelComponent={() => (
                   <View className="items-center">
                     <Text className="text-ink-muted text-[10px]">Total</Text>
@@ -223,39 +209,6 @@ export default function DashboardScreen() {
         <Text className="text-white text-2xl leading-none">+</Text>
       </Pressable>
 
-      <Modal
-        visible={editingBudget}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setEditingBudget(false)}
-      >
-        <View className="flex-1 bg-black/40 items-center justify-center px-8">
-          <View className="bg-surface rounded-2xl p-5 w-full">
-            <Text className="text-ink text-base font-semibold mb-1">Monthly budget</Text>
-            <Text className="text-ink-muted text-xs mb-4">Set your total spending limit for the month</Text>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              keyboardType="numeric"
-              placeholder="0"
-              placeholderTextColor="#A0A0AC"
-              className="border border-border rounded-xl px-4 py-3 text-ink text-base mb-4"
-              autoFocus
-            />
-            <View className="flex-row" style={{ gap: 10 }}>
-              <Pressable
-                onPress={() => setEditingBudget(false)}
-                className="flex-1 items-center py-3 rounded-xl border border-border"
-              >
-                <Text className="text-ink-muted font-medium">Cancel</Text>
-              </Pressable>
-              <Pressable onPress={saveBudget} className="flex-1 items-center py-3 rounded-xl bg-accent">
-                <Text className="text-white font-medium">Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }

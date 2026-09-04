@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { CATEGORIES } from '@/constants/categories';
+import { useTheme } from '@/context/ThemeContext';
 
 interface CategoryPickerProps {
   value: string;
@@ -9,6 +10,7 @@ interface CategoryPickerProps {
 }
 
 export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
+  const { colors } = useTheme();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
       {CATEGORIES.map((category) => {
@@ -19,14 +21,14 @@ export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
             onPress={() => onChange(category.id)}
             className="items-center px-3 py-2 rounded-2xl border"
             style={{
-              backgroundColor: selected ? `${category.color}1A` : '#FFFFFF',
-              borderColor: selected ? category.color : '#E7E7EC',
+              backgroundColor: selected ? `${category.color}1A` : colors.surface,
+              borderColor: selected ? category.color : colors.border,
             }}
           >
             <Text className="text-lg">{category.icon}</Text>
             <Text
               className="text-[11px] mt-1 font-medium"
-              style={{ color: selected ? category.color : '#6B6B76' }}
+              style={{ color: selected ? category.color : colors['ink-muted'] }}
             >
               {category.label}
             </Text>
@@ -48,18 +50,19 @@ export function CategoryFilterChip({
   color?: string;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       className="px-3 py-1.5 rounded-full border mr-2"
       style={{
-        backgroundColor: selected ? (color ? `${color}1A` : '#EEF2FF') : '#FFFFFF',
-        borderColor: selected ? (color ?? '#4F46E5') : '#E7E7EC',
+        backgroundColor: selected ? (color ? `${color}1A` : colors['accent-light']) : colors.surface,
+        borderColor: selected ? (color ?? colors.accent) : colors.border,
       }}
     >
       <Text
         className="text-xs font-medium"
-        style={{ color: selected ? (color ?? '#4F46E5') : '#6B6B76' }}
+        style={{ color: selected ? (color ?? colors.accent) : colors['ink-muted'] }}
       >
         {label}
       </Text>

@@ -32,3 +32,27 @@ export async function writeCollection<T>(key: StorageKey, value: T[]): Promise<v
     console.warn(`[storage] failed to write "${key}"`, error);
   }
 }
+
+/** Single scalar settings, stored alongside the collections above. */
+const VALUE_KEYS = {
+  theme: 'finance:theme',
+} as const;
+
+export type ValueKey = keyof typeof VALUE_KEYS;
+
+export async function readValue(key: ValueKey): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(VALUE_KEYS[key]);
+  } catch (error) {
+    console.warn(`[storage] failed to read "${key}"`, error);
+    return null;
+  }
+}
+
+export async function writeValue(key: ValueKey, value: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(VALUE_KEYS[key], value);
+  } catch (error) {
+    console.warn(`[storage] failed to write "${key}"`, error);
+  }
+}

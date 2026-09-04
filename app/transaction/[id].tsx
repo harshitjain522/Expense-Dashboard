@@ -6,6 +6,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { CategoryPicker } from '@/components/CategoryPicker';
 import { PAYMENT_METHODS } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
+import { useTheme } from '@/context/ThemeContext';
 import { formatDate, fromISODate, toISODate } from '@/utils/format';
 import type { PaymentMethod, TransactionDraft } from '@/types';
 
@@ -15,13 +16,14 @@ function createEmptyDraft(): TransactionDraft {
     categoryId: 'food',
     date: toISODate(new Date()),
     note: '',
-    paymentMethod: 'Card',
+    paymentMethod: 'UPI',
   };
 }
 
 export default function TransactionFormScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const isNew = id === 'new';
   const { getTransaction, addTransaction, updateTransaction, deleteTransaction } = useFinance();
 
@@ -106,7 +108,7 @@ export default function TransactionFormScreen() {
           onChangeText={(v) => updateField('amount', v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
           placeholder="0"
-          placeholderTextColor="#A0A0AC"
+          placeholderTextColor={colors['ink-faint']}
           className="text-ink text-2xl font-bold flex-1 py-3"
         />
       </View>
@@ -162,13 +164,13 @@ export default function TransactionFormScreen() {
               onPress={() => updateField('paymentMethod', method as PaymentMethod)}
               className="px-3 py-2 rounded-xl border"
               style={{
-                backgroundColor: selected ? '#EEF2FF' : '#FFFFFF',
-                borderColor: selected ? '#4F46E5' : '#E7E7EC',
+                backgroundColor: selected ? colors['accent-light'] : colors.surface,
+                borderColor: selected ? colors.accent : colors.border,
               }}
             >
               <Text
                 className="text-xs font-medium"
-                style={{ color: selected ? '#4F46E5' : '#6B6B76' }}
+                style={{ color: selected ? colors.accent : colors['ink-muted'] }}
               >
                 {method}
               </Text>
@@ -182,7 +184,7 @@ export default function TransactionFormScreen() {
         value={draft.note}
         onChangeText={(v) => updateField('note', v)}
         placeholder="Optional note"
-        placeholderTextColor="#A0A0AC"
+        placeholderTextColor={colors['ink-faint']}
         className="border border-border rounded-xl px-4 py-3 text-ink text-base mb-6 bg-surface"
         multiline
       />

@@ -8,6 +8,8 @@ import {
 import { ParamListBase, TabNavigationState } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useTheme } from '@/context/ThemeContext';
+
 const { Navigator } = createMaterialTopTabNavigator();
 
 const Tabs = withLayoutContext<
@@ -23,23 +25,23 @@ function TabIcon({ icon, focused }: { icon: string; focused: boolean }) {
 
 export default function TabsLayout() {
   const bottom = Math.max(useSafeAreaInsets().bottom, 8);
+  const { colors } = useTheme();
 
   return (
     <Tabs
       tabBarPosition="bottom"
       screenOptions={{
         swipeEnabled: true,
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#A0A0AC',
+        sceneStyle: { backgroundColor: colors.background },
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors['ink-faint'],
         tabBarIndicatorStyle: { height: 0 },
         tabBarShowIcon: true,
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: '#E7E7EC',
-          backgroundColor: '#FFFFFF',
+          borderTopColor: colors.border,
+          backgroundColor: colors.surface,
           height: 56 + bottom,
-          paddingTop: 8,
-          paddingBottom: bottom,
           elevation: 0,
           shadowOpacity: 0,
         },

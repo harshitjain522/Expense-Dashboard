@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 
 import type { ThemePreference } from '@/constants/theme';
 import { useFinance } from '@/context/FinanceContext';
+import { useLock } from '@/context/LockContext';
 import { useTheme } from '@/context/ThemeContext';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] = [
@@ -14,6 +15,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
 export default function SettingsScreen() {
   const { preference, setPreference, colors } = useTheme();
   const { totalBudget, setTotalBudget, isLoading } = useFinance();
+  const { available: biometricsAvailable, enabled: lockEnabled, setEnabled: setLockEnabled } = useLock();
 
   const [draft, setDraft] = useState('');
   const [saved, setSaved] = useState(false);
@@ -60,6 +62,25 @@ export default function SettingsScreen() {
             </Pressable>
           );
         })}
+      </View>
+
+      <View className="bg-surface rounded-2xl border border-border p-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-ink text-[15px] font-semibold">Biometric lock</Text>
+            <Text className="text-ink-muted text-xs mt-0.5">
+              {biometricsAvailable
+                ? 'Require your fingerprint or face to open the app'
+                : 'No fingerprint or face is enrolled on this device'}
+            </Text>
+          </View>
+          <Switch
+            value={lockEnabled}
+            onValueChange={(next) => void setLockEnabled(next)}
+            disabled={!biometricsAvailable}
+            trackColor={{ false: colors.border, true: colors.accent }}
+          />
+        </View>
       </View>
 
       <View className="bg-surface rounded-2xl border border-border p-4">

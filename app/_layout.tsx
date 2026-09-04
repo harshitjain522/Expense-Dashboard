@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { FinanceProvider } from '@/context/FinanceContext';
+import { LockProvider } from '@/context/LockContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 
 // Split out so it can read the theme: the modal headers are plain navigator
@@ -71,10 +72,12 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <FinanceProvider>
-            <StatusBar style="auto" />
-            <RootStack />
-          </FinanceProvider>
+          <StatusBar style="auto" />
+          <LockProvider>
+            <FinanceProvider>
+              <RootStack />
+            </FinanceProvider>
+          </LockProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

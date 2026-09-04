@@ -36,6 +36,7 @@ export async function writeCollection<T>(key: StorageKey, value: T[]): Promise<v
 /** Single scalar settings, stored alongside the collections above. */
 const VALUE_KEYS = {
   theme: 'finance:theme',
+  biometricLock: 'finance:biometric-lock',
 } as const;
 
 export type ValueKey = keyof typeof VALUE_KEYS;

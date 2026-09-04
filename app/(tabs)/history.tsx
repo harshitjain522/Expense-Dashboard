@@ -8,9 +8,9 @@ import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/context/ThemeContext';
 import { SettingsButton } from '@/components/SettingsButton';
 import { TransactionItem } from '@/components/TransactionItem';
-import { CATEGORIES } from '@/constants/categories';
+import { ALL_CATEGORIES } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency, toISODate } from '@/utils/format';
+import { toISODate } from '@/utils/format';
 
 type DateRangeOption = 'all' | '7d' | '30d' | 'month';
 
@@ -34,7 +34,7 @@ function rangeToDates(option: DateRangeOption): { startDate?: string; endDate?: 
 }
 
 export default function HistoryScreen() {
-  const { filterTransactions, deleteTransaction } = useFinance();
+  const { filterTransactions, deleteTransaction, formatAmount } = useFinance();
   const { colors } = useTheme();
   const [query, setQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
@@ -98,7 +98,7 @@ export default function HistoryScreen() {
           selected={!categoryId}
           onPress={() => setCategoryId(undefined)}
         />
-        {CATEGORIES.map((c) => (
+        {ALL_CATEGORIES.map((c) => (
           <CategoryFilterChip
             key={c.id}
             label={`${c.icon} ${c.label}`}
@@ -113,7 +113,7 @@ export default function HistoryScreen() {
         <Text className="text-ink-muted text-base">
           {results.length} transaction{results.length === 1 ? '' : 's'}
         </Text>
-        <Text className="text-ink text-base font-semibold">{formatCurrency(total)}</Text>
+        <Text className="text-ink text-base font-semibold">{formatAmount(total)}</Text>
       </View>
 
       <FlatList

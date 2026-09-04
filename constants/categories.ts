@@ -1,4 +1,4 @@
-import type { Category } from '@/types';
+import type { Category, TransactionType } from '@/types';
 
 export const CATEGORIES: Category[] = [
   { id: 'food', label: 'Food & Dining', icon: '🍔', color: '#F97316' },
@@ -15,7 +15,29 @@ export const CATEGORIES: Category[] = [
   { id: 'other', label: 'Other', icon: '📦', color: '#6B7280' },
 ];
 
-const CATEGORY_MAP: Record<string, Category> = CATEGORIES.reduce(
+/** Kept separate: "Salary" makes no sense in an expense breakdown, and vice versa. */
+export const INCOME_CATEGORIES: Category[] = [
+  { id: 'salary', label: 'Salary', icon: '💼', color: '#059669' },
+  { id: 'freelance', label: 'Freelance', icon: '🧑‍💻', color: '#0EA5E9' },
+  { id: 'business', label: 'Business', icon: '🏪', color: '#8B5CF6' },
+  { id: 'investments', label: 'Investments', icon: '📈', color: '#22C55E' },
+  { id: 'refund', label: 'Refund', icon: '↩️', color: '#EAB308' },
+  { id: 'gift', label: 'Gift', icon: '🎁', color: '#EC4899' },
+  { id: 'income-other', label: 'Other', icon: '💰', color: '#6B7280' },
+];
+
+export function categoriesFor(type: TransactionType): Category[] {
+  return type === 'income' ? INCOME_CATEGORIES : CATEGORIES;
+}
+
+export const DEFAULT_CATEGORY_ID: Record<TransactionType, string> = {
+  expense: 'food',
+  income: 'salary',
+};
+
+export const ALL_CATEGORIES: Category[] = [...CATEGORIES, ...INCOME_CATEGORIES];
+
+const CATEGORY_MAP: Record<string, Category> = ALL_CATEGORIES.reduce(
   (acc, category) => {
     acc[category.id] = category;
     return acc;

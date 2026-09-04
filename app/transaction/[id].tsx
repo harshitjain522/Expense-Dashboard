@@ -4,14 +4,15 @@ import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 import { CategoryPicker } from '@/components/CategoryPicker';
-import { PAYMENT_METHODS } from '@/constants/categories';
+import { DEFAULT_CATEGORY_ID, PAYMENT_METHODS } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
 import { useTheme } from '@/context/ThemeContext';
 import { formatDate, fromISODate, toISODate } from '@/utils/format';
-import type { PaymentMethod, TransactionDraft } from '@/types';
+import type { PaymentMethod, TransactionDraft, TransactionType } from '@/types';
 
 function createEmptyDraft(): TransactionDraft {
   return {
+    type: 'expense',
     amount: '',
     categoryId: 'food',
     date: toISODate(new Date()),
@@ -25,7 +26,8 @@ export default function TransactionFormScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const isNew = id === 'new';
-  const { getTransaction, addTransaction, updateTransaction, deleteTransaction } = useFinance();
+  const { getTransaction, addTransaction, updateTransaction, deleteTransaction, currency } =
+    useFinance();
 
   const [draft, setDraft] = useState<TransactionDraft>(createEmptyDraft);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -44,6 +46,7 @@ export default function TransactionFormScreen() {
     if (hydrated.current || !existing) return;
     hydrated.current = true;
     setDraft({
+      type: existing.type,
       amount: String(existing.amount),
       categoryId: existing.categoryId,
       date: existing.date,
@@ -51,6 +54,12 @@ export default function TransactionFormScreen() {
       paymentMethod: existing.paymentMethod,
     });
   }, [existing]);
+
+  // The two category lists share no ids, so switching type must move the
+  // selection onto a valid category instead of leaving a stale one behind.
+  function selectType(type: TransactionType) {
+    setDraft((prev) => ({ ...prev, type, categoryId: DEFAULT_CATEGORY_ID[type] }));
+  }
 
   function updateField<K extends keyof TransactionDraft>(field: K, value: TransactionDraft[K]) {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -100,9 +109,31 @@ export default function TransactionFormScreen() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20 }}>
+      <Text className="text-ink-muted text-xs font-medium mb-1.5">TYPE</Text>
+      <View className="flex-row bg-surface border border-border rounded-xl p-1 mb-5">
+        {(['expense', 'income'] as const).map((option) => {
+          const selected = draft.type === option;
+          return (
+            <Pressable
+              key={option}
+              onPress={() => selectType(option)}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              className={`flex-1 items-center py-2.5 rounded-lg ${selected ? 'bg-accent' : ''}`}
+            >
+              <Text
+                className={`text-sm font-semibold ${selected ? 'text-white' : 'text-ink-muted'}`}
+              >
+                {option === 'expense' ? 'Expense' : 'Income'}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <Text className="text-ink-muted text-xs font-medium mb-1.5">AMOUNT</Text>
       <View className="flex-row items-center border border-border rounded-xl px-4 mb-5 bg-surface">
-        <Text className="text-ink text-2xl font-bold mr-1">₹</Text>
+        <Text className="text-ink text-2xl font-bold mr-1">{currency.symbol}</Text>
         <TextInput
           value={draft.amount}
           onChangeText={(v) => updateField('amount', v.replace(/[^0-9.]/g, ''))}
@@ -115,7 +146,11 @@ export default function TransactionFormScreen() {
 
       <Text className="text-ink-muted text-xs font-medium mb-1.5">CATEGORY</Text>
       <View className="mb-5">
-        <CategoryPicker value={draft.categoryId} onChange={(v) => updateField('categoryId', v)} />
+        <CategoryPicker
+          value={draft.categoryId}
+          onChange={(v) => updateField('categoryId', v)}
+          type={draft.type}
+        />
       </View>
 
       <Text className="text-ink-muted text-xs font-medium mb-1.5">DATE</Text>

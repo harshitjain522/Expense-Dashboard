@@ -55,6 +55,14 @@ function RootStack() {
           }}
         />
         <Stack.Screen
+          name="recurring"
+          options={{
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Recurring',
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             presentation: 'modal',

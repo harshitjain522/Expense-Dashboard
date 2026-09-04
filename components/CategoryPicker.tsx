@@ -1,19 +1,21 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { CATEGORIES } from '@/constants/categories';
+import { categoriesFor } from '@/constants/categories';
+import type { TransactionType } from '@/types';
 import { useTheme } from '@/context/ThemeContext';
 
 interface CategoryPickerProps {
   value: string;
   onChange: (categoryId: string) => void;
+  type: TransactionType;
 }
 
-export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
+export function CategoryPicker({ value, onChange, type }: CategoryPickerProps) {
   const { colors } = useTheme();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-      {CATEGORIES.map((category) => {
+      {categoriesFor(type).map((category) => {
         const selected = category.id === value;
         return (
           <Pressable

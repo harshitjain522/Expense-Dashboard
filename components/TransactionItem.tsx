@@ -2,7 +2,8 @@ import { Text, View, Pressable } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 
 import { getCategory } from '@/constants/categories';
-import { formatCurrency, formatDateShort } from '@/utils/format';
+import { useFinance } from '@/context/FinanceContext';
+import { formatDateShort } from '@/utils/format';
 import type { Transaction } from '@/types';
 
 interface TransactionItemProps {
@@ -14,6 +15,8 @@ interface TransactionItemProps {
 
 export function TransactionItem({ transaction, onPress, onEdit, onDelete }: TransactionItemProps) {
   const category = getCategory(transaction.categoryId);
+  const { formatAmount } = useFinance();
+  const isIncome = transaction.type === 'income';
 
   return (
     <ReanimatedSwipeable
@@ -50,8 +53,11 @@ export function TransactionItem({ transaction, onPress, onEdit, onDelete }: Tran
             {category.label} · {transaction.paymentMethod} · {formatDateShort(transaction.date)}
           </Text>
         </View>
-        <Text className="text-ink text-[15px] font-semibold ml-2">
-          {formatCurrency(transaction.amount)}
+        <Text
+          className={`text-[15px] font-semibold ml-2 ${isIncome ? 'text-success' : 'text-ink'}`}
+        >
+          {isIncome ? '+' : ''}
+          {formatAmount(transaction.amount)}
         </Text>
       </Pressable>
     </ReanimatedSwipeable>

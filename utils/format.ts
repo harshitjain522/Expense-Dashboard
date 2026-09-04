@@ -1,7 +1,12 @@
-export function formatCurrency(value: number): string {
+import type { Currency } from '@/constants/currencies';
+import type { RecurrenceFrequency } from '@/types';
+
+export function formatCurrency(value: number, currency: Currency): string {
   const sign = value < 0 ? '-' : '';
   const abs = Math.abs(value);
-  return `${sign}₹${abs.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  return `${sign}${currency.symbol}${abs.toLocaleString(currency.locale, {
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 /**
@@ -66,4 +71,23 @@ export function compactAmount(value: number): string {
     return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
   }
   return String(Math.round(value));
+}
+
+/**
+ * Moves an ISO date forward by one recurrence step. Months and years go via the
+ * 1st and then clamp: adding a month to the 31st with a plain `setMonth` spills
+ * into the month after next, so a rule set on the 31st would drift off calendar.
+ */
+export function advanceDate(iso: string, frequency: RecurrenceFrequency): string {
+  const date = fromISODate(iso);
+  if (frequency === 'weekly') {
+    date.setDate(date.getDate() + 7);
+    return toISODate(date);
+  }
+  const day = date.getDate();
+  date.setDate(1);
+  date.setMonth(date.getMonth() + (frequency === 'monthly' ? 1 : 12));
+  const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  date.setDate(Math.min(day, lastDayOfMonth));
+  return toISODate(date);
 }

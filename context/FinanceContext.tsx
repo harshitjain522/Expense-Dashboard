@@ -8,9 +8,17 @@ import React, {
   useState,
 } from 'react';
 
-import { readCollection, writeCollection } from '@/utils/storage';
-import { currentMonthKey, monthKey } from '@/utils/format';
-import type { Budget, Transaction, TransactionDraft, TransactionFilters } from '@/types';
+import { DEFAULT_CURRENCY_CODE, getCurrency, type Currency } from '@/constants/currencies';
+import { clearAll, readCollection, readValue, writeCollection, writeValue } from '@/utils/storage';
+import { advanceDate, currentMonthKey, formatCurrency, monthKey, toISODate } from '@/utils/format';
+import type {
+  Budget,
+  RecurringRule,
+  Transaction,
+  TransactionDraft,
+  TransactionFilters,
+  TransactionType,
+} from '@/types';
 
 /**
  * Budgets are persisted as a list of `{ categoryId, monthlyLimit }` rows, but
@@ -18,6 +26,9 @@ import type { Budget, Transaction, TransactionDraft, TransactionFilters } from '
  * category. That budget lives in the one row keyed by this id.
  */
 export const TOTAL_BUDGET_KEY = 'total';
+
+/** Stops a corrupt date from spinning the catch-up loop forever. */
+const MAX_CATCH_UP_OCCURRENCES = 500;
 
 interface FinanceContextValue {
   transactions: Transaction[];
@@ -28,9 +39,18 @@ interface FinanceContextValue {
   getTransaction: (id: string) => Transaction | undefined;
   filterTransactions: (filters: TransactionFilters) => Transaction[];
   monthlySpent: (key?: string) => number;
+  monthlyIncome: (key?: string) => number;
   categorySpent: (categoryId: string, key?: string) => number;
   totalBudget: number;
   setTotalBudget: (amount: number) => Promise<void>;
+  recurringRules: RecurringRule[];
+  addRecurringRule: (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => Promise<void>;
+  deleteRecurringRule: (id: string) => Promise<void>;
+  currency: Currency;
+  setCurrencyCode: (code: string) => Promise<void>;
+  /** Formats in the chosen currency. Screens use this rather than formatCurrency. */
+  formatAmount: (value: number) => string;
+  clearAllData: () => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextValue | undefined>(undefined);
@@ -39,29 +59,88 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Rows written before income tracking existed are all expenses. */
+function migrateTransaction(t: Transaction): Transaction {
+  return t.type ? t : { ...t, type: 'expense' };
+}
+
+/**
+ * Emits every occurrence a rule still owes up to today and advances it past
+ * them, so an app left closed for three months catches up in one pass.
+ */
+function catchUpRules(
+  rules: RecurringRule[],
+  today: string
+): { rules: RecurringRule[]; generated: Transaction[] } {
+  const generated: Transaction[] = [];
+  const now = new Date().toISOString();
+
+  const advanced = rules.map((rule) => {
+    let nextDate = rule.nextDate;
+    let emitted = 0;
+    while (nextDate <= today && emitted < MAX_CATCH_UP_OCCURRENCES) {
+      generated.push({
+        id: generateId(),
+        type: rule.type,
+        amount: rule.amount,
+        categoryId: rule.categoryId,
+        date: nextDate,
+        note: rule.note,
+        paymentMethod: rule.paymentMethod,
+        createdAt: now,
+        updatedAt: now,
+        recurringRuleId: rule.id,
+      });
+      nextDate = advanceDate(nextDate, rule.frequency);
+      emitted += 1;
+    }
+    return nextDate === rule.nextDate ? rule : { ...rule, nextDate };
+  });
+
+  return { rules: advanced, generated };
+}
+
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const transactionsRef = useRef<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
+  const [currencyCode, setCurrencyCodeState] = useState(DEFAULT_CURRENCY_CODE);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [storedTransactions, storedBudgets] = await Promise.all([
+      const [storedTransactions, storedBudgets, storedRules, storedCurrency] = await Promise.all([
         readCollection<Transaction>('transactions'),
         readCollection<Budget>('budgets'),
+        readCollection<RecurringRule>('recurring'),
+        readValue('currency'),
       ]);
-      setTransactions(storedTransactions);
-      transactionsRef.current = storedTransactions;
 
       // Older versions stored one budget row per category. Those rows are
       // meaningless now and would be counted on top of the overall budget, so
       // drop everything except the single "total" row.
       const totalRow = storedBudgets.find((b) => b.categoryId === TOTAL_BUDGET_KEY);
-      const migrated = totalRow ? [totalRow] : [];
-      setBudgets(migrated);
-      if (migrated.length !== storedBudgets.length) {
-        await writeCollection('budgets', migrated);
+      const migratedBudgets = totalRow ? [totalRow] : [];
+      setBudgets(migratedBudgets);
+      if (migratedBudgets.length !== storedBudgets.length) {
+        await writeCollection('budgets', migratedBudgets);
+      }
+
+      const migrated = storedTransactions.map(migrateTransaction);
+      const { rules, generated } = catchUpRules(storedRules, toISODate(new Date()));
+      const nextTransactions = generated.length
+        ? [...generated, ...migrated].sort((a, b) => b.date.localeCompare(a.date))
+        : migrated;
+
+      setTransactions(nextTransactions);
+      transactionsRef.current = nextTransactions;
+      setRecurringRules(rules);
+      if (storedCurrency) setCurrencyCodeState(storedCurrency);
+
+      if (generated.length) {
+        await writeCollection('transactions', nextTransactions);
+        await writeCollection('recurring', rules);
       }
 
       setIsLoading(false);
@@ -89,11 +168,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await writeCollection('budgets', next);
   }, []);
 
+  const persistRules = useCallback(async (next: RecurringRule[]) => {
+    setRecurringRules(next);
+    await writeCollection('recurring', next);
+  }, []);
+
   const addTransaction = useCallback(
     async (draft: TransactionDraft) => {
       const now = new Date().toISOString();
       const transaction: Transaction = {
         id: generateId(),
+        type: draft.type,
         amount: Number(draft.amount) || 0,
         categoryId: draft.categoryId,
         date: draft.date,
@@ -114,6 +199,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           t.id === id
             ? {
                 ...t,
+                type: draft.type,
                 amount: Number(draft.amount) || 0,
                 categoryId: draft.categoryId,
                 date: draft.date,
@@ -150,9 +236,51 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [persistBudgets]
   );
 
+  const addRecurringRule = useCallback(
+    async (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => {
+      const created: RecurringRule = {
+        ...rule,
+        id: generateId(),
+        createdAt: new Date().toISOString(),
+      };
+      // Catch up immediately so a rule starting today or backdated produces its
+      // transactions now rather than waiting for the next launch.
+      const { rules, generated } = catchUpRules([created], toISODate(new Date()));
+      await persistRules([...recurringRules, ...rules]);
+      if (generated.length) {
+        await persistTransactions((prev) =>
+          [...generated, ...prev].sort((a, b) => b.date.localeCompare(a.date))
+        );
+      }
+    },
+    [recurringRules, persistRules, persistTransactions]
+  );
+
+  const deleteRecurringRule = useCallback(
+    async (id: string) => {
+      // Transactions it already generated stay: they are real money that moved.
+      await persistRules(recurringRules.filter((r) => r.id !== id));
+    },
+    [recurringRules, persistRules]
+  );
+
+  const setCurrencyCode = useCallback(async (code: string) => {
+    setCurrencyCodeState(code);
+    await writeValue('currency', code);
+  }, []);
+
+  const clearAllData = useCallback(async () => {
+    await clearAll();
+    transactionsRef.current = [];
+    setTransactions([]);
+    setBudgets([]);
+    setRecurringRules([]);
+  }, []);
+
   const filterTransactions = useCallback(
     (filters: TransactionFilters) => {
       return transactions.filter((t) => {
+        if (filters.type && t.type !== filters.type) return false;
         if (filters.categoryId && t.categoryId !== filters.categoryId) return false;
         if (filters.startDate && t.date < filters.startDate) return false;
         if (filters.endDate && t.date > filters.endDate) return false;
@@ -166,21 +294,31 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [transactions]
   );
 
-  const monthlySpent = useCallback(
-    (key: string = currentMonthKey()) => {
-      return transactions
-        .filter((t) => monthKey(t.date) === key)
-        .reduce((sum, t) => sum + t.amount, 0);
-    },
+  const sumFor = useCallback(
+    (type: TransactionType, key: string) =>
+      transactions
+        .filter((t) => t.type === type && monthKey(t.date) === key)
+        .reduce((sum, t) => sum + t.amount, 0),
     [transactions]
   );
 
+  const monthlySpent = useCallback(
+    (key: string = currentMonthKey()) => sumFor('expense', key),
+    [sumFor]
+  );
+
+  const monthlyIncome = useCallback(
+    (key: string = currentMonthKey()) => sumFor('income', key),
+    [sumFor]
+  );
+
   const categorySpent = useCallback(
-    (categoryId: string, key: string = currentMonthKey()) => {
-      return transactions
-        .filter((t) => t.categoryId === categoryId && monthKey(t.date) === key)
-        .reduce((sum, t) => sum + t.amount, 0);
-    },
+    (categoryId: string, key: string = currentMonthKey()) =>
+      transactions
+        .filter(
+          (t) => t.type === 'expense' && t.categoryId === categoryId && monthKey(t.date) === key
+        )
+        .reduce((sum, t) => sum + t.amount, 0),
     [transactions]
   );
 
@@ -188,6 +326,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     () => budgets.find((b) => b.categoryId === TOTAL_BUDGET_KEY)?.monthlyLimit ?? 0,
     [budgets]
   );
+
+  const currency = useMemo(() => getCurrency(currencyCode), [currencyCode]);
+
+  const formatAmount = useCallback((value: number) => formatCurrency(value, currency), [currency]);
 
   const value = useMemo<FinanceContextValue>(
     () => ({
@@ -199,9 +341,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       getTransaction,
       filterTransactions,
       monthlySpent,
+      monthlyIncome,
       categorySpent,
       totalBudget,
       setTotalBudget,
+      recurringRules,
+      addRecurringRule,
+      deleteRecurringRule,
+      currency,
+      setCurrencyCode,
+      formatAmount,
+      clearAllData,
     }),
     [
       transactions,
@@ -212,9 +362,17 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       getTransaction,
       filterTransactions,
       monthlySpent,
+      monthlyIncome,
       categorySpent,
       totalBudget,
       setTotalBudget,
+      recurringRules,
+      addRecurringRule,
+      deleteRecurringRule,
+      currency,
+      setCurrencyCode,
+      formatAmount,
+      clearAllData,
     ]
   );
 

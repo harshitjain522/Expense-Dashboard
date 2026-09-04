@@ -13,7 +13,6 @@ import { useFinance } from '@/context/FinanceContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   currentMonthKey,
-  formatCurrency,
   monthLabel,
   monthLabelShort,
   monthKey,
@@ -23,12 +22,22 @@ import {
 const TREND_MONTHS = 6;
 
 export default function DashboardScreen() {
-  const { transactions, monthlySpent, totalBudget, deleteTransaction, isLoading } = useFinance();
+  const {
+    transactions,
+    monthlySpent,
+    monthlyIncome,
+    totalBudget,
+    deleteTransaction,
+    isLoading,
+    formatAmount,
+  } = useFinance();
   const { colors } = useTheme();
   const [key, setKey] = useState(currentMonthKey);
 
   const isCurrentMonth = key >= currentMonthKey();
   const spent = monthlySpent(key);
+  const income = monthlyIncome(key);
+  const net = income - spent;
   const remaining = totalBudget - spent;
 
   const monthTransactions = useMemo(
@@ -38,7 +47,9 @@ export default function DashboardScreen() {
 
   const pieData = useMemo(() => {
     const totals = new Map<string, number>();
-    for (const t of monthTransactions) {
+    // Expenses only: the breakdown answers "where did the money go", so a
+    // salary row would otherwise dominate it as a phantom category.
+    for (const t of monthTransactions.filter((t) => t.type === 'expense')) {
       totals.set(t.categoryId, (totals.get(t.categoryId) ?? 0) + t.amount);
     }
     return Array.from(totals.entries())
@@ -111,8 +122,17 @@ export default function DashboardScreen() {
             <Text className="text-ink-muted text-xs">
               {isCurrentMonth ? 'Spent this month' : 'Spent'}
             </Text>
-            <Text className="text-ink text-xl font-bold mt-1">{formatCurrency(spent)}</Text>
+            <Text className="text-ink text-xl font-bold mt-1">{formatAmount(spent)}</Text>
           </View>
+          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
+            <Text className="text-ink-muted text-xs">Income</Text>
+            <Text className="text-xl font-bold mt-1" style={{ color: colors.success }}>
+              {formatAmount(income)}
+            </Text>
+          </View>
+        </View>
+
+        <View className="flex-row px-5 mt-3" style={{ gap: 12 }}>
           <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
             <Text className="text-ink-muted text-xs">Budget remaining</Text>
             {totalBudget > 0 ? (
@@ -120,11 +140,20 @@ export default function DashboardScreen() {
                 className="text-xl font-bold mt-1"
                 style={{ color: remaining < 0 ? colors.danger : colors.ink }}
               >
-                {formatCurrency(remaining)}
+                {formatAmount(remaining)}
               </Text>
             ) : (
               <Text className="text-ink-faint text-sm font-semibold mt-1.5">Set one in Settings</Text>
             )}
+          </View>
+          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
+            <Text className="text-ink-muted text-xs">Net this month</Text>
+            <Text
+              className="text-xl font-bold mt-1"
+              style={{ color: net < 0 ? colors.danger : colors.success }}
+            >
+              {formatAmount(net)}
+            </Text>
           </View>
         </View>
 
@@ -155,7 +184,7 @@ export default function DashboardScreen() {
                 centerLabelComponent={() => (
                   <View className="items-center">
                     <Text className="text-ink-muted text-[10px]">Total</Text>
-                    <Text className="text-ink text-sm font-bold">{formatCurrency(spent)}</Text>
+                    <Text className="text-ink text-sm font-bold">{formatAmount(spent)}</Text>
                   </View>
                 )}
               />

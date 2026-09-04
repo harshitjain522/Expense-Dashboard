@@ -136,36 +136,6 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View className="bg-surface rounded-2xl border border-border p-4">
-        <Text className="text-ink text-[15px] font-semibold">Currency</Text>
-        <Text className="text-ink-muted text-xs mt-0.5 mb-3">Changes how every amount is shown</Text>
-        <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-          {CURRENCIES.map((option) => {
-            const selected = option.code === currency.code;
-            return (
-              <Pressable
-                key={option.code}
-                onPress={() => void setCurrencyCode(option.code)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                className="px-3 py-2 rounded-xl border"
-                style={{
-                  backgroundColor: selected ? colors['accent-light'] : colors.surface,
-                  borderColor: selected ? colors.accent : colors.border,
-                }}
-              >
-                <Text
-                  className="text-sm font-medium"
-                  style={{ color: selected ? colors.accent : colors['ink-muted'] }}
-                >
-                  {option.symbol} {option.code}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
       <Pressable
         onPress={() => router.push('/recurring')}
         accessibilityRole="button"
@@ -201,6 +171,36 @@ export default function SettingsScreen() {
         <Pressable onPress={saveBudget} className="mt-3 items-center py-3 rounded-xl bg-accent">
           <Text className="text-white font-medium">{saved ? 'Saved' : 'Save budget'}</Text>
         </Pressable>
+      </View>
+
+      <View className="bg-surface rounded-2xl border border-border p-4">
+        <Text className="text-ink text-[15px] font-semibold">Currency</Text>
+        <Text className="text-ink-muted text-xs mt-0.5 mb-3">Changes how every amount is shown</Text>
+        <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+          {CURRENCIES.map((option) => {
+            const selected = option.code === currency.code;
+            return (
+              <Pressable
+                key={option.code}
+                onPress={() => void setCurrencyCode(option.code)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                className="px-3 py-2 rounded-xl border"
+                style={{
+                  backgroundColor: selected ? colors['accent-light'] : colors.surface,
+                  borderColor: selected ? colors.accent : colors.border,
+                }}
+              >
+                <Text
+                  className="text-sm font-medium"
+                  style={{ color: selected ? colors.accent : colors['ink-muted'] }}
+                >
+                  {option.symbol} {option.code}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <View className="bg-surface rounded-2xl border border-border p-4">

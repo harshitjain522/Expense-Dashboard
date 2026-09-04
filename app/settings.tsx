@@ -18,6 +18,15 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
   { value: 'dark', label: 'Dark', hint: 'Always dark' },
 ];
 
+/** Group heading. Sits outside the panel so the panel itself needs no border. */
+function GroupLabel({ children }: { children: string }) {
+  return <Text className="text-ink-muted text-[13px] font-ui mb-2 mt-1">{children}</Text>;
+}
+
+function Panel({ children }: { children: React.ReactNode }) {
+  return <View className="bg-surface rounded-xl overflow-hidden">{children}</View>;
+}
+
 export default function SettingsScreen() {
   const { preference, setPreference, colors } = useTheme();
   const {
@@ -40,9 +49,9 @@ export default function SettingsScreen() {
   const [saved, setSaved] = useState(false);
   const hydrated = useRef(false);
 
-  // Budgets load asynchronously, so the stored amount may not be there on the
-  // first render. Fill the field once it arrives, but only once, so it can't
-  // overwrite an edit in progress.
+  // The budget loads asynchronously, so the stored amount may not be there on
+  // the first render. Fill the field once it arrives, but only once, so it
+  // can't overwrite an edit in progress.
   useEffect(() => {
     if (hydrated.current || isLoading) return;
     hydrated.current = true;
@@ -92,9 +101,9 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, gap: 16 }}>
-      <View className="bg-surface rounded-2xl border border-border overflow-hidden">
-        <Text className="text-ink text-[15px] font-semibold px-4 pt-4 pb-1">Appearance</Text>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, gap: 14 }}>
+      <GroupLabel>Appearance</GroupLabel>
+      <Panel>
         {THEME_OPTIONS.map((option, index) => {
           const selected = preference === option.value;
           return (
@@ -103,25 +112,26 @@ export default function SettingsScreen() {
               onPress={() => setPreference(option.value)}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              className={`flex-row items-center justify-between px-4 py-3 ${
+              className={`flex-row items-center justify-between px-4 py-3.5 ${
                 index > 0 ? 'border-t border-border' : ''
               }`}
             >
               <View className="flex-1">
-                <Text className="text-ink text-sm font-medium">{option.label}</Text>
-                <Text className="text-ink-muted text-xs mt-0.5">{option.hint}</Text>
+                <Text className="text-ink text-sm font-ui">{option.label}</Text>
+                <Text className="text-ink-muted text-xs font-body mt-0.5">{option.hint}</Text>
               </View>
-              {selected && <Text className="text-accent text-base font-bold ml-3">✓</Text>}
+              {selected && <Text className="text-accent text-base font-strong ml-3">✓</Text>}
             </Pressable>
           );
         })}
-      </View>
+      </Panel>
 
-      <View className="bg-surface rounded-2xl border border-border p-4">
-        <View className="flex-row items-center justify-between">
+      <GroupLabel>Security</GroupLabel>
+      <Panel>
+        <View className="flex-row items-center justify-between px-4 py-3.5">
           <View className="flex-1 pr-3">
-            <Text className="text-ink text-[15px] font-semibold">Biometric lock</Text>
-            <Text className="text-ink-muted text-xs mt-0.5">
+            <Text className="text-ink text-sm font-ui">Biometric lock</Text>
+            <Text className="text-ink-muted text-xs font-body mt-0.5">
               {biometricsAvailable
                 ? 'Require your fingerprint or face to open the app'
                 : 'No fingerprint or face is enrolled on this device'}
@@ -134,99 +144,114 @@ export default function SettingsScreen() {
             trackColor={{ false: colors.border, true: colors.accent }}
           />
         </View>
-      </View>
+      </Panel>
 
-      <Pressable
-        onPress={() => router.push('/recurring')}
-        accessibilityRole="button"
-        className="bg-surface rounded-2xl border border-border p-4 flex-row items-center justify-between"
-      >
-        <View className="flex-1 pr-3">
-          <Text className="text-ink text-[15px] font-semibold">Recurring transactions</Text>
-          <Text className="text-ink-muted text-xs mt-0.5">
-            {recurringRules.length
-              ? `${recurringRules.length} active`
-              : 'Rent, salary, subscriptions'}
-          </Text>
-        </View>
-        <Text className="text-ink-faint text-lg">›</Text>
-      </Pressable>
-
-      <View className="bg-surface rounded-2xl border border-border p-4">
-        <Text className="text-ink text-[15px] font-semibold">Monthly budget</Text>
-        <Text className="text-ink-muted text-xs mt-0.5 mb-3">
-          Your total spending limit for the month
-        </Text>
-        <TextInput
-          value={draft}
-          onChangeText={(text) => {
-            setDraft(text);
-            setSaved(false);
-          }}
-          keyboardType="numeric"
-          placeholder="0"
-          placeholderTextColor={colors['ink-faint']}
-          className="border border-border rounded-xl px-4 py-3 text-ink text-base"
-        />
-        <Pressable onPress={saveBudget} className="mt-3 items-center py-3 rounded-xl bg-accent">
-          <Text className="text-white font-medium">{saved ? 'Saved' : 'Save budget'}</Text>
+      <GroupLabel>Automatic entries</GroupLabel>
+      <Panel>
+        <Pressable
+          onPress={() => router.push('/recurring')}
+          accessibilityRole="button"
+          className="px-4 py-3.5 flex-row items-center justify-between"
+        >
+          <View className="flex-1 pr-3">
+            <Text className="text-ink text-sm font-ui">Recurring transactions</Text>
+            <Text className="text-ink-muted text-xs font-body mt-0.5">
+              {recurringRules.length
+                ? `${recurringRules.length} active`
+                : 'Rent, salary, subscriptions'}
+            </Text>
+          </View>
+          <Text className="text-ink-faint text-lg font-body">›</Text>
         </Pressable>
-      </View>
+      </Panel>
 
-      <View className="bg-surface rounded-2xl border border-border p-4">
-        <Text className="text-ink text-[15px] font-semibold">Currency</Text>
-        <Text className="text-ink-muted text-xs mt-0.5 mb-3">Changes how every amount is shown</Text>
-        <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-          {CURRENCIES.map((option) => {
-            const selected = option.code === currency.code;
-            return (
-              <Pressable
-                key={option.code}
-                onPress={() => void setCurrencyCode(option.code)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                className="px-3 py-2 rounded-xl border"
-                style={{
-                  backgroundColor: selected ? colors['accent-light'] : colors.surface,
-                  borderColor: selected ? colors.accent : colors.border,
-                }}
-              >
-                <Text
-                  className="text-sm font-medium"
-                  style={{ color: selected ? colors.accent : colors['ink-muted'] }}
+      <GroupLabel>Monthly budget</GroupLabel>
+      <Panel>
+        <View className="p-4">
+          <Text className="text-ink-muted text-xs font-body mb-3">
+            Your total spending limit for the month
+          </Text>
+          <View className="flex-row items-center border border-border rounded-xl px-4">
+            <Text className="text-ink-muted text-base font-num mr-2">{currency.symbol}</Text>
+            <TextInput
+              value={draft}
+              onChangeText={(text) => {
+                setDraft(text);
+                setSaved(false);
+              }}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor={colors['ink-faint']}
+              accessibilityLabel="Monthly budget"
+              className="text-ink text-base font-num-strong flex-1 py-3"
+            />
+          </View>
+          <Pressable onPress={saveBudget} className="mt-3 items-center py-3 rounded-xl bg-accent">
+            <Text className="text-on-accent font-strong">{saved ? 'Saved' : 'Save budget'}</Text>
+          </Pressable>
+        </View>
+      </Panel>
+
+      <GroupLabel>Currency</GroupLabel>
+      <Panel>
+        <View className="p-4">
+          <Text className="text-ink-muted text-xs font-body mb-3">
+            Changes how every amount is shown
+          </Text>
+          <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+            {CURRENCIES.map((option) => {
+              const selected = option.code === currency.code;
+              return (
+                <Pressable
+                  key={option.code}
+                  onPress={() => void setCurrencyCode(option.code)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  className="px-3 py-2 rounded-xl border"
+                  style={{
+                    backgroundColor: selected ? colors['accent-light'] : 'transparent',
+                    borderColor: selected ? colors.accent : colors.border,
+                  }}
                 >
-                  {option.symbol} {option.code}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    className="text-sm font-num"
+                    style={{ color: selected ? colors.accent : colors['ink-muted'] }}
+                  >
+                    {option.symbol} {option.code}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      </Panel>
 
-      <View className="bg-surface rounded-2xl border border-border p-4">
-        <Text className="text-ink text-[15px] font-semibold">Data</Text>
-        <Text className="text-ink-muted text-xs mt-0.5 mb-3">
-          {transactions.length} transaction{transactions.length === 1 ? '' : 's'} stored on this
-          device
-        </Text>
-        <Pressable
-          onPress={exportCsv}
-          accessibilityRole="button"
-          className="items-center py-3 rounded-xl border border-border"
-        >
-          <Text className="text-ink font-medium">Export as CSV</Text>
-        </Pressable>
-        <Pressable
-          onPress={confirmClear}
-          accessibilityRole="button"
-          className="mt-2 items-center py-3 rounded-xl"
-          style={{ backgroundColor: colors['danger-light'] }}
-        >
-          <Text className="font-medium" style={{ color: colors.danger }}>
-            Clear all data
+      <GroupLabel>Data</GroupLabel>
+      <Panel>
+        <View className="p-4">
+          <Text className="text-ink-muted text-xs font-body mb-3">
+            {transactions.length} transaction{transactions.length === 1 ? '' : 's'} stored on this
+            device
           </Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={exportCsv}
+            accessibilityRole="button"
+            className="items-center py-3 rounded-xl border border-border"
+          >
+            <Text className="text-ink font-ui">Export as CSV</Text>
+          </Pressable>
+          <Pressable
+            onPress={confirmClear}
+            accessibilityRole="button"
+            className="mt-2 items-center py-3 rounded-xl"
+            style={{ backgroundColor: colors['danger-light'] }}
+          >
+            <Text className="font-ui" style={{ color: colors.danger }}>
+              Clear all data
+            </Text>
+          </Pressable>
+        </View>
+      </Panel>
     </ScrollView>
   );
 }

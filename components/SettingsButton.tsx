@@ -6,10 +6,10 @@ export function SettingsButton() {
     <Pressable
       onPress={() => router.push('/settings')}
       accessibilityRole="button"
-      accessibilityLabel="Setting"
-      className="px-3 py-1.5 rounded-full border border-border bg-surface"
+      accessibilityLabel="Settings"
+      className="px-3 py-1.5 rounded-full border border-border"
     >
-      <Text className="text-ink text-xs font-semibold">Setting</Text>
+      <Text className="text-ink-muted text-xs font-ui">Settings</Text>
     </Pressable>
   );
 }

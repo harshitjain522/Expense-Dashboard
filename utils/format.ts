@@ -65,11 +65,17 @@ export function shiftMonthKey(key: string, delta: number): string {
   return monthKey(toISODate(new Date(year, month - 1 + delta, 1)));
 }
 
-/** Abbreviates large amounts for chart axis ticks, e.g. 1500 -> "1.5k". */
+/**
+ * Abbreviates amounts for chart axis ticks. Groups the Indian way, because the
+ * amounts themselves already do: `toLocaleString('en-IN')` reads 184240 as
+ * 1,84,240, so an axis calling that 184k would be counting in a different
+ * system to the figure beside it.
+ */
 export function compactAmount(value: number): string {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(1).replace(/\.0$/, '')}k`;
-  }
+  const trim = (n: number) => n.toFixed(1).replace(/\.0$/, '');
+  if (value >= 10000000) return `${trim(value / 10000000)}Cr`;
+  if (value >= 100000) return `${trim(value / 100000)}L`;
+  if (value >= 1000) return `${trim(value / 1000)}k`;
   return String(Math.round(value));
 }
 

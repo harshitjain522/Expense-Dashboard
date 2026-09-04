@@ -4,6 +4,11 @@
  * same values. `paletteVars` feeds NativeWind through `vars()` at the root, so
  * every existing `bg-surface` / `text-ink` class follows the active scheme
  * without needing a `dark:` variant of its own.
+ *
+ * Colours are drawn from Indian currency notes rather than a framework ramp:
+ * the olive-green of the 500 and the saffron of the 200. Green carries the
+ * whole interface; `flag` is the one loud colour and has exactly two jobs,
+ * the add button and going over budget.
  */
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -13,7 +18,8 @@ export type ColorScheme = 'light' | 'dark';
 export type PaletteKey =
   | 'accent'
   | 'accent-light'
-  | 'accent-dark'
+  | 'flag'
+  | 'on-accent'
   | 'surface'
   | 'background'
   | 'border'
@@ -22,47 +28,40 @@ export type PaletteKey =
   | 'ink-faint'
   | 'danger'
   | 'danger-light'
-  | 'warning'
-  | 'warning-light'
-  | 'success'
-  | 'success-light';
+  | 'success';
 
 export type Palette = Record<PaletteKey, string>;
 
 export const PALETTES: Record<ColorScheme, Palette> = {
   light: {
-    accent: '#4F46E5',
-    'accent-light': '#EEF2FF',
-    'accent-dark': '#3730A3',
-    surface: '#FFFFFF',
-    background: '#F7F7F9',
-    border: '#E7E7EC',
-    ink: '#111114',
-    'ink-muted': '#6B6B76',
-    'ink-faint': '#A0A0AC',
-    danger: '#DC2626',
-    'danger-light': '#FEF2F2',
-    warning: '#D97706',
-    'warning-light': '#FFFBEB',
-    success: '#059669',
-    'success-light': '#ECFDF5',
+    accent: '#1F5B45',
+    'accent-light': '#DCE5DC',
+    flag: '#B85410',
+    'on-accent': '#FFFFFF',
+    surface: '#F8F9F5',
+    background: '#EBEDE6',
+    border: '#C9CFC0',
+    ink: '#14211B',
+    'ink-muted': '#54605A',
+    'ink-faint': '#737E77',
+    danger: '#A33A22',
+    'danger-light': '#F2E2DB',
+    success: '#1F6B4A',
   },
   dark: {
-    accent: '#818CF8',
-    'accent-light': '#1E1B4B',
-    'accent-dark': '#A5B4FC',
-    surface: '#17171C',
-    background: '#0B0B0F',
-    border: '#2A2A32',
-    ink: '#F2F2F5',
-    'ink-muted': '#9B9BA6',
-    'ink-faint': '#6B6B76',
-    danger: '#F87171',
-    'danger-light': '#2A1516',
-    warning: '#FBBF24',
-    'warning-light': '#2A2113',
-    success: '#34D399',
-    'success-light': '#10241C',
+    accent: '#62BE97',
+    'accent-light': '#16261F',
+    flag: '#E8873A',
+    'on-accent': '#0D1310',
+    surface: '#17201A',
+    background: '#0D1310',
+    border: '#26302A',
+    ink: '#E9EEE6',
+    'ink-muted': '#96A29A',
+    'ink-faint': '#6E7B73',
+    danger: '#E4785A',
+    'danger-light': '#2A1712',
+    success: '#62BE97',
   },
 };
 

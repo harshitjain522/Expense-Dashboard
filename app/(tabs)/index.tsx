@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PieChart } from 'react-native-gifted-charts';
 
 import { EmptyState } from '@/components/EmptyState';
 import { SettingsButton } from '@/components/SettingsButton';
@@ -20,6 +19,33 @@ import {
 } from '@/utils/format';
 
 const TREND_MONTHS = 6;
+
+/** Rule-and-heading pair. Sections are divided by a line, not boxed in a card. */
+function Section({
+  title,
+  action,
+  onAction,
+  children,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <View className="border-t border-border mt-6 pt-5">
+      <View className="flex-row items-baseline justify-between px-5 mb-4">
+        <Text className="text-ink text-base font-display">{title}</Text>
+        {action && (
+          <Pressable onPress={onAction} hitSlop={8}>
+            <Text className="text-accent text-xs font-ui">{action}</Text>
+          </Pressable>
+        )}
+      </View>
+      {children}
+    </View>
+  );
+}
 
 export default function DashboardScreen() {
   const {
@@ -39,13 +65,21 @@ export default function DashboardScreen() {
   const income = monthlyIncome(key);
   const net = income - spent;
   const remaining = totalBudget - spent;
+  const overBudget = totalBudget > 0 && remaining < 0;
+
+  // Only meaningful while the month is still running: a past month has no days
+  // left to spread the remainder over.
+  const now = new Date();
+  const daysLeft = isCurrentMonth
+    ? new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate()
+    : 0;
 
   const monthTransactions = useMemo(
     () => transactions.filter((t) => monthKey(t.date) === key),
     [transactions, key]
   );
 
-  const pieData = useMemo(() => {
+  const byCategory = useMemo(() => {
     const totals = new Map<string, number>();
     // Expenses only: the breakdown answers "where did the money go", so a
     // salary row would otherwise dominate it as a phantom category.
@@ -57,7 +91,13 @@ export default function DashboardScreen() {
         const category = getCategory(categoryId);
         // Keep the id around: unknown categories all fall back to "Other", so
         // the label alone is not a unique key.
-        return { categoryId, value, color: category.color, text: category.label };
+        return {
+          categoryId,
+          value,
+          color: category.color,
+          icon: category.icon,
+          label: category.label,
+        };
       })
       .sort((a, b) => b.value - a.value);
   }, [monthTransactions]);
@@ -75,145 +115,171 @@ export default function DashboardScreen() {
 
   const hasTrendData = trendData.some((point) => point.value > 0);
   const recent = monthTransactions.slice(0, 5);
+  // Bars are scaled against the biggest category, not the month total, so the
+  // shape stays readable when spending is spread thin across many categories.
+  const largest = byCategory[0]?.value ?? 0;
 
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-background items-center justify-center">
-        <Text className="text-ink-muted">Loading…</Text>
+        <Text className="text-ink-muted font-body">Loading</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
-        <View className="px-5 pt-4 pb-1 flex-row items-center justify-between">
-          <Text className="text-ink text-2xl font-bold">Dashboard</Text>
-          <SettingsButton />
-        </View>
-
-        <View className="px-5 pb-1 flex-row items-center">
+      <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
+        <View className="px-5 pt-4 flex-row items-center">
           <Pressable
             onPress={() => setKey(shiftMonthKey(key, -1))}
-            hitSlop={10}
-            className="w-8 h-8 rounded-full border border-border bg-surface items-center justify-center"
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
           >
-            <Text className="text-ink-muted text-base leading-none">‹</Text>
+            <Text className="text-ink-muted text-xl font-body leading-none">&#8249;</Text>
           </Pressable>
-          <Text className="text-ink text-sm font-medium mx-3">{monthLabel(key)}</Text>
+          <Text className="text-ink text-[22px] font-display mx-3">{monthLabel(key)}</Text>
           <Pressable
             onPress={() => setKey(shiftMonthKey(key, 1))}
             disabled={isCurrentMonth}
-            hitSlop={10}
-            style={{ opacity: isCurrentMonth ? 0.35 : 1 }}
-            className="w-8 h-8 rounded-full border border-border bg-surface items-center justify-center"
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+            style={{ opacity: isCurrentMonth ? 0.3 : 1 }}
           >
-            <Text className="text-ink-muted text-base leading-none">›</Text>
+            <Text className="text-ink-muted text-xl font-body leading-none">&#8250;</Text>
           </Pressable>
-          {!isCurrentMonth && (
-            <Pressable onPress={() => setKey(currentMonthKey())} hitSlop={10} className="ml-auto">
-              <Text className="text-accent text-xs font-medium">This month</Text>
-            </Pressable>
-          )}
-        </View>
-
-        <View className="flex-row px-5 mt-3" style={{ gap: 12 }}>
-          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
-            <Text className="text-ink-muted text-xs">
-              {isCurrentMonth ? 'Spent this month' : 'Spent'}
-            </Text>
-            <Text className="text-ink text-xl font-bold mt-1">{formatAmount(spent)}</Text>
-          </View>
-          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
-            <Text className="text-ink-muted text-xs">Income</Text>
-            <Text className="text-xl font-bold mt-1" style={{ color: colors.success }}>
-              {formatAmount(income)}
-            </Text>
+          <View className="ml-auto">
+            <SettingsButton />
           </View>
         </View>
 
-        <View className="flex-row px-5 mt-3" style={{ gap: 12 }}>
-          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
-            <Text className="text-ink-muted text-xs">Budget remaining</Text>
-            {totalBudget > 0 ? (
+        <View className="px-5 pt-7 pb-6">
+          {totalBudget > 0 ? (
+            <>
               <Text
-                className="text-xl font-bold mt-1"
-                style={{ color: remaining < 0 ? colors.danger : colors.ink }}
+                className="text-[52px] font-display leading-none"
+                style={{ color: overBudget ? colors.flag : colors.ink }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
               >
-                {formatAmount(remaining)}
+                {formatAmount(Math.abs(remaining))}
               </Text>
-            ) : (
-              <Text className="text-ink-faint text-sm font-semibold mt-1.5">Set one in Settings</Text>
-            )}
-          </View>
-          <View className="flex-1 bg-surface rounded-2xl p-4 border border-border">
-            <Text className="text-ink-muted text-xs">Net this month</Text>
-            <Text
-              className="text-xl font-bold mt-1"
-              style={{ color: net < 0 ? colors.danger : colors.success }}
-            >
-              {formatAmount(net)}
-            </Text>
-          </View>
-        </View>
-
-        <View className="mx-5 mt-4 bg-surface rounded-2xl p-4 border border-border">
-          <Text className="text-ink text-[15px] font-semibold">Spending trend</Text>
-          <Text className="text-ink-muted text-xs mt-0.5">
-            Last {TREND_MONTHS} months · tap a bar to jump to that month
-          </Text>
-          {hasTrendData ? (
-            <SpendingTrendChart data={trendData} selectedMonth={key} onSelectMonth={setKey} />
+              <Text className="text-ink-muted text-[13px] font-body mt-2.5">
+                {overBudget ? 'over budget' : 'left to spend'}
+                {daysLeft > 0 ? ` · ${daysLeft} day${daysLeft === 1 ? '' : 's'} to go` : ''}
+              </Text>
+              <View className="h-1.5 rounded-full bg-border overflow-hidden mt-4">
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(100, (spent / totalBudget) * 100)}%`,
+                    backgroundColor: overBudget ? colors.flag : colors.accent,
+                  }}
+                />
+              </View>
+              <Text className="text-ink-muted text-xs font-num mt-2">
+                {formatAmount(spent)} of {formatAmount(totalBudget)}
+              </Text>
+            </>
           ) : (
-            <EmptyState icon="📈" title="Nothing to chart yet" subtitle="Add transactions to see your trend" />
+            <>
+              <Text
+                className="text-ink text-[52px] font-display leading-none"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {formatAmount(spent)}
+              </Text>
+              <Text className="text-ink-muted text-[13px] font-body mt-2.5">
+                spent in {monthLabel(key)}
+              </Text>
+              <Pressable onPress={() => router.push('/settings')} className="mt-4 self-start">
+                <Text className="text-accent text-[13px] font-ui">Set a monthly budget</Text>
+              </Pressable>
+            </>
           )}
         </View>
 
-        <View className="mx-5 mt-4 bg-surface rounded-2xl p-4 border border-border">
-          <Text className="text-ink text-[15px] font-semibold mb-3">By category</Text>
-          {pieData.length === 0 ? (
-            <EmptyState icon="🧮" title="No spending yet" subtitle="Add a transaction to see the breakdown" />
+        <View className="flex-row border-t border-border">
+          {[
+            { label: 'Spent', value: formatAmount(spent), color: colors.ink },
+            { label: 'Income', value: formatAmount(income), color: colors.success },
+            {
+              label: 'Net',
+              value: `${net > 0 ? '+' : ''}${formatAmount(net)}`,
+              color: net < 0 ? colors.danger : colors.success,
+            },
+          ].map((stat) => (
+            <View key={stat.label} className="flex-1 px-5 py-4">
+              <Text className="text-ink-muted text-[11px] font-body">{stat.label}</Text>
+              <Text className="text-[15px] font-num-strong mt-1" style={{ color: stat.color }}>
+                {stat.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <Section title="Where it went">
+          {byCategory.length === 0 ? (
+            <EmptyState
+              icon={'\u{1F9EE}'}
+              title="No spending yet"
+              subtitle="Add a transaction to see the breakdown"
+            />
           ) : (
-            <View className="items-center">
-              <PieChart
-                data={pieData}
-                donut
-                radius={80}
-                innerRadius={52}
-                innerCircleColor={colors.surface}
-                centerLabelComponent={() => (
-                  <View className="items-center">
-                    <Text className="text-ink-muted text-[10px]">Total</Text>
-                    <Text className="text-ink text-sm font-bold">{formatAmount(spent)}</Text>
+            <View className="px-5">
+              {byCategory.map((row) => (
+                <View key={row.categoryId} className="mb-3.5">
+                  <View className="flex-row items-center mb-1.5">
+                    <Text className="text-xs mr-2">{row.icon}</Text>
+                    <Text className="text-ink text-[13px] font-ui flex-1" numberOfLines={1}>
+                      {row.label}
+                    </Text>
+                    <Text className="text-ink text-[13px] font-num">{formatAmount(row.value)}</Text>
                   </View>
-                )}
-              />
-              <View className="flex-row flex-wrap mt-4 justify-center" style={{ gap: 12 }}>
-                {pieData.map((slice) => (
-                  <View key={slice.categoryId} className="flex-row items-center">
+                  <View className="h-1 rounded-full bg-border overflow-hidden">
                     <View
-                      className="w-2.5 h-2.5 rounded-full mr-1.5"
-                      style={{ backgroundColor: slice.color }}
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${largest > 0 ? (row.value / largest) * 100 : 0}%`,
+                        backgroundColor: row.color,
+                      }}
                     />
-                    <Text className="text-ink-muted text-xs">{slice.text}</Text>
                   </View>
-                ))}
-              </View>
+                </View>
+              ))}
             </View>
           )}
-        </View>
+        </Section>
 
-        <View className="mt-5">
-          <View className="flex-row items-center justify-between px-5 mb-1">
-            <Text className="text-ink text-[15px] font-semibold">Recent transactions</Text>
-            <Pressable onPress={() => router.push('/history')}>
-              <Text className="text-accent text-xs font-medium">See all</Text>
-            </Pressable>
-          </View>
-          {recent.length === 0 ? (
-            <EmptyState icon="💸" title="No transactions yet" subtitle="Tap + to add your first expense" />
+        <Section title="Six months">
+          {hasTrendData ? (
+            <View className="px-5">
+              <Text className="text-ink-muted text-xs font-body mb-1">
+                Tap a bar to jump to that month
+              </Text>
+              <SpendingTrendChart data={trendData} selectedMonth={key} onSelectMonth={setKey} />
+            </View>
           ) : (
-            <View className="bg-surface mx-5 rounded-2xl border border-border overflow-hidden">
+            <EmptyState
+              icon={'\u{1F4C8}'}
+              title="Nothing to chart yet"
+              subtitle="Add transactions to see your trend"
+            />
+          )}
+        </Section>
+
+        <Section title="Recent" action="See all" onAction={() => router.push('/history')}>
+          {recent.length === 0 ? (
+            <EmptyState
+              icon={'\u{1F4B8}'}
+              title="No transactions yet"
+              subtitle="Tap the plus to add your first expense"
+            />
+          ) : (
+            <View className="border-t border-border">
               {recent.map((t) => (
                 <TransactionItem
                   key={t.id}
@@ -225,19 +291,33 @@ export default function DashboardScreen() {
               ))}
             </View>
           )}
-        </View>
+        </Section>
       </ScrollView>
+
+      {!isCurrentMonth && (
+        <Pressable
+          onPress={() => setKey(currentMonthKey())}
+          className="absolute bottom-6 left-5 px-3.5 py-2 rounded-full border border-border bg-surface"
+        >
+          <Text className="text-ink-muted text-xs font-ui">Back to this month</Text>
+        </Pressable>
+      )}
 
       <Pressable
         onPress={() => router.push('/transaction/new')}
         accessibilityRole="button"
         accessibilityLabel="Add transaction"
-        className="absolute bottom-5 right-5 w-14 h-14 rounded-full bg-accent items-center justify-center"
-        style={{ elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}
+        className="absolute bottom-5 right-5 w-14 h-14 rounded-full bg-flag items-center justify-center"
+        style={{
+          elevation: 4,
+          shadowColor: '#000',
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+        }}
       >
-        <Text className="text-white text-2xl leading-none">+</Text>
+        <Text className="text-on-accent text-3xl font-body leading-none">+</Text>
       </Pressable>
-
     </SafeAreaView>
   );
 }

@@ -39,6 +39,7 @@ const VALUE_KEYS = {
   theme: 'finance:theme',
   biometricLock: 'finance:biometric-lock',
   currency: 'finance:currency',
+  budget: 'finance:budget',
 } as const;
 
 export type ValueKey = keyof typeof VALUE_KEYS;
@@ -61,12 +62,14 @@ export async function writeValue(key: ValueKey, value: string): Promise<void> {
 }
 
 /**
- * Wipes the records only. Preferences under VALUE_KEYS survive on purpose:
- * "clear data" should not silently switch off someone's biometric lock or
- * throw away their theme and currency choice.
+ * Wipes the records only. Theme, lock and currency survive on purpose: "clear
+ * data" should not silently switch off someone's biometric lock. The budget is
+ * a record rather than a preference, so it goes.
  */
+const DATA_KEYS: string[] = [...Object.values(STORAGE_KEYS), VALUE_KEYS.budget];
+
 export async function clearAll(): Promise<void> {
-  const keys = Object.values(STORAGE_KEYS);
+  const keys = DATA_KEYS;
   try {
     await AsyncStorage.multiRemove(keys);
   } catch (error) {

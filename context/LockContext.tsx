@@ -36,8 +36,8 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   return (
     <View className="flex-1 bg-background items-center justify-center px-8">
       <Text className="text-5xl mb-4">🔒</Text>
-      <Text className="text-ink text-lg font-semibold">Locked</Text>
-      <Text className="text-ink-muted text-sm text-center mt-1 mb-6">
+      <Text className="text-ink text-xl font-display">Locked</Text>
+      <Text className="text-ink-muted text-sm font-body text-center mt-1.5 mb-6">
         Unlock to view your expenses
       </Text>
       <Pressable
@@ -45,7 +45,7 @@ function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         accessibilityRole="button"
         className="px-6 py-3 rounded-xl bg-accent"
       >
-        <Text className="text-white font-medium">Unlock</Text>
+        <Text className="text-on-accent font-strong">Unlock</Text>
       </Pressable>
     </View>
   );

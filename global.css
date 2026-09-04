@@ -3,23 +3,22 @@
 @tailwind utilities;
 
 /* Light values are the defaults so the first paint is styled even before
-   ThemeProvider mounts and overrides them via vars(). */
+   ThemeProvider mounts and overrides them via vars(). Keep in step with
+   PALETTES.light in constants/theme.ts. */
 @layer base {
   :root {
-    --color-accent: #4F46E5;
-    --color-accent-light: #EEF2FF;
-    --color-accent-dark: #3730A3;
-    --color-surface: #FFFFFF;
-    --color-background: #F7F7F9;
-    --color-border: #E7E7EC;
-    --color-ink: #111114;
-    --color-ink-muted: #6B6B76;
-    --color-ink-faint: #A0A0AC;
-    --color-danger: #DC2626;
-    --color-danger-light: #FEF2F2;
-    --color-warning: #D97706;
-    --color-warning-light: #FFFBEB;
-    --color-success: #059669;
-    --color-success-light: #ECFDF5;
+    --color-accent: #1F5B45;
+    --color-accent-light: #DCE5DC;
+    --color-flag: #B85410;
+    --color-on-accent: #FFFFFF;
+    --color-surface: #F8F9F5;
+    --color-background: #EBEDE6;
+    --color-border: #C9CFC0;
+    --color-ink: #14211B;
+    --color-ink-muted: #54605A;
+    --color-ink-faint: #737E77;
+    --color-danger: #A33A22;
+    --color-danger-light: #F2E2DB;
+    --color-success: #1F6B4A;
   }
 }

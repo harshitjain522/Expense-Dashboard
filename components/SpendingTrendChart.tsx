@@ -10,7 +10,7 @@ import { compactAmount } from '@/utils/format';
  * months recede to gray, so the eye lands on the month being viewed rather than
  * on whichever bar happens to be tallest. Both colours clear 3:1 against the
  * card surface, and identity never rests on colour alone - the x-axis names
- * every month and the selected total is repeated in the stat tile above.
+ * every month and the selected total is repeated in the figure above.
  */
 
 export interface TrendPoint {
@@ -30,7 +30,7 @@ export function SpendingTrendChart({ data, selectedMonth, onSelectMonth }: Spend
   const barData = data.map((point) => ({
     value: point.value,
     label: point.label,
-    frontColor: point.monthKey === selectedMonth ? colors.accent : colors['ink-muted'],
+    frontColor: point.monthKey === selectedMonth ? colors.accent : colors['ink-faint'],
     onPress: () => onSelectMonth(point.monthKey),
   }));
 
@@ -50,8 +50,8 @@ export function SpendingTrendChart({ data, selectedMonth, onSelectMonth }: Spend
         xAxisThickness={1}
         xAxisColor={colors.border}
         yAxisThickness={0}
-        yAxisTextStyle={{ color: colors['ink-muted'], fontSize: 10 }}
-        xAxisLabelTextStyle={{ color: colors['ink-muted'], fontSize: 10 }}
+        yAxisTextStyle={{ color: colors['ink-muted'], fontSize: 10, fontFamily: 'IBMPlexMono_500Medium' }}
+        xAxisLabelTextStyle={{ color: colors['ink-muted'], fontSize: 10, fontFamily: 'IBMPlexMono_500Medium' }}
         formatYLabel={(label: string) => {
           const value = Number(label);
           return Number.isFinite(value) ? compactAmount(value) : label;

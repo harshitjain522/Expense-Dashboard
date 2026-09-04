@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -67,8 +67,8 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-        <Text className="text-ink text-2xl font-bold">History</Text>
+      <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
+        <Text className="text-ink text-[22px] font-display">History</Text>
         <SettingsButton />
       </View>
 
@@ -76,9 +76,9 @@ export default function HistoryScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by note…"
+          placeholder="Search notes"
           placeholderTextColor={colors['ink-faint']}
-          className="border border-border rounded-xl px-4 py-2.5 text-ink text-sm bg-surface"
+          className="border border-border rounded-xl px-4 py-2.5 text-ink text-sm font-body bg-surface"
         />
       </View>
 
@@ -104,7 +104,7 @@ export default function HistoryScreen() {
         showsHorizontalScrollIndicator={false}
         {...holdSwipe}
         style={{ flexGrow: 0 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 15, alignItems: 'center' }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, alignItems: 'center' }}
       >
         <CategoryFilterChip
           label="All categories"
@@ -122,11 +122,11 @@ export default function HistoryScreen() {
         ))}
       </ScrollView>
 
-      <View className="px-5 pb-3 flex-row items-center justify-between">
-        <Text className="text-ink-muted text-base">
+      <View className="px-5 py-3 flex-row items-baseline justify-between border-t border-border">
+        <Text className="text-ink-muted text-[13px] font-body">
           {results.length} transaction{results.length === 1 ? '' : 's'}
         </Text>
-        <Text className="text-ink text-base font-semibold">{formatAmount(total)}</Text>
+        <Text className="text-ink text-base font-num-strong">{formatAmount(total)}</Text>
       </View>
 
       <FlatList
@@ -134,8 +134,13 @@ export default function HistoryScreen() {
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 32 }}
+        ListHeaderComponent={results.length > 0 ? <View className="border-t border-border" /> : null}
         ListEmptyComponent={
-          <EmptyState icon="🔍" title="No transactions found" subtitle="Try adjusting your filters" />
+          <EmptyState
+            icon={'\u{1F50D}'}
+            title="No transactions found"
+            subtitle="Try a different range or category"
+          />
         }
         renderItem={({ item }) => (
           <TransactionItem

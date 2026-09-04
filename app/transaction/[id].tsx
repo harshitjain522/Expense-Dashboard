@@ -3,7 +3,8 @@ import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'r
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
-import { CategoryPicker } from '@/components/CategoryPicker';
+import { CategoryFilterChip, CategoryPicker } from '@/components/CategoryPicker';
+import { TypeToggle } from '@/components/TypeToggle';
 import { DEFAULT_CATEGORY_ID, PAYMENT_METHODS } from '@/constants/categories';
 import { useFinance } from '@/context/FinanceContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -19,6 +20,10 @@ function createEmptyDraft(): TransactionDraft {
     note: '',
     paymentMethod: 'UPI',
   };
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return <Text className="text-ink-muted text-[13px] font-ui mb-2">{children}</Text>;
 }
 
 export default function TransactionFormScreen() {
@@ -77,7 +82,7 @@ export default function TransactionFormScreen() {
   async function handleSave() {
     const amountNumber = Number(draft.amount);
     if (!draft.amount || !Number.isFinite(amountNumber) || amountNumber <= 0) {
-      Alert.alert('Invalid amount', 'Please enter an amount greater than 0.');
+      Alert.alert('Invalid amount', 'Enter an amount greater than 0.');
       return;
     }
     // Both sides are YYYY-MM-DD, so a plain string compare orders them correctly.
@@ -109,43 +114,24 @@ export default function TransactionFormScreen() {
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20 }}>
-      <Text className="text-ink-muted text-xs font-medium mb-1.5">TYPE</Text>
-      <View className="flex-row bg-surface border border-border rounded-xl p-1 mb-5">
-        {(['expense', 'income'] as const).map((option) => {
-          const selected = draft.type === option;
-          return (
-            <Pressable
-              key={option}
-              onPress={() => selectType(option)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              className={`flex-1 items-center py-2.5 rounded-lg ${selected ? 'bg-accent' : ''}`}
-            >
-              <Text
-                className={`text-sm font-semibold ${selected ? 'text-white' : 'text-ink-muted'}`}
-              >
-                {option === 'expense' ? 'Expense' : 'Income'}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <TypeToggle value={draft.type} onChange={selectType} className="bg-surface mb-7" />
 
-      <Text className="text-ink-muted text-xs font-medium mb-1.5">AMOUNT</Text>
-      <View className="flex-row items-center border border-border rounded-xl px-4 mb-5 bg-surface">
-        <Text className="text-ink text-2xl font-bold mr-1">{currency.symbol}</Text>
+      {/* No label: the currency mark and the size say what this is. */}
+      <View className="flex-row items-center border-b border-border pb-2 mb-7">
+        <Text className="text-ink-muted text-3xl font-num mr-2">{currency.symbol}</Text>
         <TextInput
           value={draft.amount}
           onChangeText={(v) => updateField('amount', v.replace(/[^0-9.]/g, ''))}
           keyboardType="decimal-pad"
           placeholder="0"
           placeholderTextColor={colors['ink-faint']}
-          className="text-ink text-2xl font-bold flex-1 py-3"
+          accessibilityLabel="Amount"
+          className="text-ink text-4xl font-num-strong flex-1 py-1"
         />
       </View>
 
-      <Text className="text-ink-muted text-xs font-medium mb-1.5">CATEGORY</Text>
-      <View className="mb-5">
+      <FieldLabel>Category</FieldLabel>
+      <View className="mb-7">
         <CategoryPicker
           value={draft.categoryId}
           onChange={(v) => updateField('categoryId', v)}
@@ -153,18 +139,18 @@ export default function TransactionFormScreen() {
         />
       </View>
 
-      <Text className="text-ink-muted text-xs font-medium mb-1.5">DATE</Text>
+      <FieldLabel>Date</FieldLabel>
       <Pressable
         onPress={() => setShowDatePicker(true)}
-        className="flex-row items-center justify-between border border-border rounded-xl px-4 py-3 mb-5 bg-surface"
+        className="flex-row items-center justify-between border border-border rounded-xl px-4 py-3 mb-7 bg-surface"
       >
-        <Text className="text-ink text-base">{formatDate(draft.date)}</Text>
-        <Text className="text-base">📅</Text>
+        <Text className="text-ink text-base font-body">{formatDate(draft.date)}</Text>
+        <Text className="text-base">{'\u{1F4C5}'}</Text>
       </Pressable>
 
       {showDatePicker &&
         (Platform.OS === 'ios' ? (
-          <View className="bg-surface border border-border rounded-xl mb-5 overflow-hidden">
+          <View className="bg-surface border border-border rounded-xl mb-7 overflow-hidden">
             <DateTimePicker
               value={fromISODate(draft.date)}
               mode="date"
@@ -176,7 +162,7 @@ export default function TransactionFormScreen() {
               onPress={() => setShowDatePicker(false)}
               className="items-center py-3 border-t border-border"
             >
-              <Text className="text-accent font-semibold">Done</Text>
+              <Text className="text-accent font-strong">Done</Text>
             </Pressable>
           </View>
         ) : (
@@ -189,50 +175,40 @@ export default function TransactionFormScreen() {
           />
         ))}
 
-      <Text className="text-ink-muted text-xs font-medium mb-1.5">PAYMENT METHOD</Text>
-      <View className="flex-row flex-wrap mb-5" style={{ gap: 8 }}>
-        {PAYMENT_METHODS.map((method) => {
-          const selected = draft.paymentMethod === method;
-          return (
-            <Pressable
-              key={method}
-              onPress={() => updateField('paymentMethod', method as PaymentMethod)}
-              className="px-3 py-2 rounded-xl border"
-              style={{
-                backgroundColor: selected ? colors['accent-light'] : colors.surface,
-                borderColor: selected ? colors.accent : colors.border,
-              }}
-            >
-              <Text
-                className="text-xs font-medium"
-                style={{ color: selected ? colors.accent : colors['ink-muted'] }}
-              >
-                {method}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <FieldLabel>Paid with</FieldLabel>
+      <View className="flex-row flex-wrap mb-7" style={{ rowGap: 8 }}>
+        {PAYMENT_METHODS.map((method) => (
+          <CategoryFilterChip
+            key={method}
+            label={method}
+            selected={draft.paymentMethod === method}
+            onPress={() => updateField('paymentMethod', method as PaymentMethod)}
+          />
+        ))}
       </View>
 
-      <Text className="text-ink-muted text-xs font-medium mb-1.5">NOTE</Text>
+      <FieldLabel>Note</FieldLabel>
       <TextInput
         value={draft.note}
         onChangeText={(v) => updateField('note', v)}
-        placeholder="Optional note"
+        placeholder="What was it for?"
         placeholderTextColor={colors['ink-faint']}
-        className="border border-border rounded-xl px-4 py-3 text-ink text-base mb-6 bg-surface"
+        className="border border-border rounded-xl px-4 py-3 text-ink text-base font-body mb-8 bg-surface"
         multiline
       />
 
       <Pressable onPress={handleSave} className="items-center py-4 rounded-xl bg-accent mb-3">
-        <Text className="text-white font-semibold text-base">
-          {isNew ? 'Add Transaction' : 'Save Changes'}
+        <Text className="text-on-accent font-strong text-base">
+          {isNew ? 'Add transaction' : 'Save changes'}
         </Text>
       </Pressable>
 
       {!isNew && (
-        <Pressable onPress={handleDelete} className="items-center py-4 rounded-xl border border-danger">
-          <Text className="text-danger font-semibold text-base">Delete Transaction</Text>
+        <Pressable
+          onPress={handleDelete}
+          className="items-center py-4 rounded-xl border border-danger"
+        >
+          <Text className="text-danger font-strong text-base">Delete transaction</Text>
         </Pressable>
       )}
     </ScrollView>

@@ -13,6 +13,11 @@ interface TransactionItemProps {
   onDelete?: () => void;
 }
 
+/**
+ * A passbook line: description on the left edge, money on the right, one
+ * hairline between rows and no card around them. Amounts and dates are set in
+ * the mono face so the right-hand column stays aligned as figures change.
+ */
 export function TransactionItem({ transaction, onPress, onEdit, onDelete }: TransactionItemProps) {
   const category = getCategory(transaction.categoryId);
   const { formatAmount } = useFinance();
@@ -29,7 +34,7 @@ export function TransactionItem({ transaction, onPress, onEdit, onDelete }: Tran
               onPress={() => { swipeable.close(); fn?.(); }}
               className={`w-16 items-center justify-center ${bg}`}
             >
-              <Text className="text-white text-xs font-semibold">{label}</Text>
+              <Text className="text-on-accent text-xs font-strong">{label}</Text>
             </Pressable>
           ))}
         </View>
@@ -37,28 +42,31 @@ export function TransactionItem({ transaction, onPress, onEdit, onDelete }: Tran
     >
       <Pressable
         onPress={onPress}
-        className="flex-row items-center bg-surface px-4 py-3 border-b border-border"
+        className="flex-row items-center bg-background px-5 py-3.5 border-b border-border"
       >
         <View
-          className="w-10 h-10 rounded-full items-center justify-center mr-3"
-          style={{ backgroundColor: `${category.color}1A` }}
+          className="w-9 h-9 rounded-full items-center justify-center mr-3"
+          style={{ backgroundColor: `${category.color}22` }}
         >
-          <Text className="text-base">{category.icon}</Text>
+          <Text className="text-sm">{category.icon}</Text>
         </View>
-        <View className="flex-1">
-          <Text className="text-ink text-[15px] font-medium" numberOfLines={1}>
+        <View className="flex-1 pr-3">
+          <Text className="text-ink text-[15px] font-ui" numberOfLines={1}>
             {transaction.note || category.label}
           </Text>
-          <Text className="text-ink-muted text-xs mt-0.5">
-            {category.label} · {transaction.paymentMethod} · {formatDateShort(transaction.date)}
+          <Text className="text-ink-muted text-xs font-body mt-0.5" numberOfLines={1}>
+            {category.label} · {transaction.paymentMethod}
           </Text>
         </View>
-        <Text
-          className={`text-[15px] font-semibold ml-2 ${isIncome ? 'text-success' : 'text-ink'}`}
-        >
-          {isIncome ? '+' : ''}
-          {formatAmount(transaction.amount)}
-        </Text>
+        <View className="items-end">
+          <Text className={`text-[15px] font-num-strong ${isIncome ? 'text-success' : 'text-ink'}`}>
+            {isIncome ? '+' : ''}
+            {formatAmount(transaction.amount)}
+          </Text>
+          <Text className="text-ink-muted text-[11px] font-num mt-1">
+            {formatDateShort(transaction.date)}
+          </Text>
+        </View>
       </Pressable>
     </ReanimatedSwipeable>
   );

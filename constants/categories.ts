@@ -1,29 +1,35 @@
 import type { Category, TransactionType } from '@/types';
 
+/**
+ * Category hues sit in one saturation and value band so twelve of them can
+ * share a screen without any one shouting. They are graphic fills - never the
+ * only carrier of meaning - so each category keeps its icon and label too.
+ */
+
 export const CATEGORIES: Category[] = [
-  { id: 'food', label: 'Food & Dining', icon: '🍔', color: '#F97316' },
-  { id: 'groceries', label: 'Groceries', icon: '🛒', color: '#22C55E' },
-  { id: 'transport', label: 'Transport', icon: '🚗', color: '#3B82F6' },
-  { id: 'shopping', label: 'Shopping', icon: '🛍️', color: '#EC4899' },
-  { id: 'bills', label: 'Bills & Utilities', icon: '💡', color: '#EAB308' },
-  { id: 'rent', label: 'Rent & Housing', icon: '🏠', color: '#8B5CF6' },
-  { id: 'health', label: 'Health & Fitness', icon: '💊', color: '#EF4444' },
-  { id: 'entertainment', label: 'Entertainment', icon: '🎬', color: '#06B6D4' },
-  { id: 'education', label: 'Education', icon: '📚', color: '#6366F1' },
-  { id: 'travel', label: 'Travel', icon: '✈️', color: '#0EA5E9' },
-  { id: 'subscriptions', label: 'Subscriptions', icon: '🔁', color: '#A855F7' },
-  { id: 'other', label: 'Other', icon: '📦', color: '#6B7280' },
+  { id: 'food', label: 'Food & Dining', icon: '🍔', color: '#C25E3A' },
+  { id: 'groceries', label: 'Groceries', icon: '🛒', color: '#5F8C3F' },
+  { id: 'transport', label: 'Transport', icon: '🚗', color: '#3B7A8C' },
+  { id: 'shopping', label: 'Shopping', icon: '🛍️', color: '#A8497A' },
+  { id: 'bills', label: 'Bills & Utilities', icon: '💡', color: '#B08A2E' },
+  { id: 'rent', label: 'Rent & Housing', icon: '🏠', color: '#6B5FA8' },
+  { id: 'health', label: 'Health & Fitness', icon: '💊', color: '#B24B4B' },
+  { id: 'entertainment', label: 'Entertainment', icon: '🎬', color: '#3E7F76' },
+  { id: 'education', label: 'Education', icon: '📚', color: '#4A6BA8' },
+  { id: 'travel', label: 'Travel', icon: '✈️', color: '#2F87A8' },
+  { id: 'subscriptions', label: 'Subscriptions', icon: '🔁', color: '#8A5AA0' },
+  { id: 'other', label: 'Other', icon: '📦', color: '#6E756C' },
 ];
 
 /** Kept separate: "Salary" makes no sense in an expense breakdown, and vice versa. */
 export const INCOME_CATEGORIES: Category[] = [
-  { id: 'salary', label: 'Salary', icon: '💼', color: '#059669' },
-  { id: 'freelance', label: 'Freelance', icon: '🧑‍💻', color: '#0EA5E9' },
-  { id: 'business', label: 'Business', icon: '🏪', color: '#8B5CF6' },
-  { id: 'investments', label: 'Investments', icon: '📈', color: '#22C55E' },
-  { id: 'refund', label: 'Refund', icon: '↩️', color: '#EAB308' },
-  { id: 'gift', label: 'Gift', icon: '🎁', color: '#EC4899' },
-  { id: 'income-other', label: 'Other', icon: '💰', color: '#6B7280' },
+  { id: 'salary', label: 'Salary', icon: '💼', color: '#2E7D5B' },
+  { id: 'freelance', label: 'Freelance', icon: '🧑‍💻', color: '#2F87A8' },
+  { id: 'business', label: 'Business', icon: '🏪', color: '#6B5FA8' },
+  { id: 'investments', label: 'Investments', icon: '📈', color: '#5F8C3F' },
+  { id: 'refund', label: 'Refund', icon: '↩️', color: '#B08A2E' },
+  { id: 'gift', label: 'Gift', icon: '🎁', color: '#A8497A' },
+  { id: 'income-other', label: 'Other', icon: '💰', color: '#6E756C' },
 ];
 
 export function categoriesFor(type: TransactionType): Category[] {

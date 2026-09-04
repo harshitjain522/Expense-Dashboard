@@ -12,20 +12,12 @@ import { DEFAULT_CURRENCY_CODE, getCurrency, type Currency } from '@/constants/c
 import { clearAll, readCollection, readValue, writeCollection, writeValue } from '@/utils/storage';
 import { advanceDate, currentMonthKey, formatCurrency, monthKey, toISODate } from '@/utils/format';
 import type {
-  Budget,
   RecurringRule,
   Transaction,
   TransactionDraft,
   TransactionFilters,
   TransactionType,
 } from '@/types';
-
-/**
- * Budgets are persisted as a list of `{ categoryId, monthlyLimit }` rows, but
- * the app now tracks a single overall monthly budget rather than one per
- * category. That budget lives in the one row keyed by this id.
- */
-export const TOTAL_BUDGET_KEY = 'total';
 
 /** Stops a corrupt date from spinning the catch-up loop forever. */
 const MAX_CATCH_UP_OCCURRENCES = 500;
@@ -103,29 +95,32 @@ function catchUpRules(
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const transactionsRef = useRef<Transaction[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [totalBudget, setTotalBudgetState] = useState(0);
   const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [currencyCode, setCurrencyCodeState] = useState(DEFAULT_CURRENCY_CODE);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [storedTransactions, storedBudgets, storedRules, storedCurrency] = await Promise.all([
-        readCollection<Transaction>('transactions'),
-        readCollection<Budget>('budgets'),
-        readCollection<RecurringRule>('recurring'),
-        readValue('currency'),
-      ]);
+      const [storedTransactions, storedBudget, legacyBudgets, storedRules, storedCurrency] =
+        await Promise.all([
+          readCollection<Transaction>('transactions'),
+          readValue('budget'),
+          readCollection<{ categoryId: string; monthlyLimit: number }>('budgets'),
+          readCollection<RecurringRule>('recurring'),
+          readValue('currency'),
+        ]);
 
-      // Older versions stored one budget row per category. Those rows are
-      // meaningless now and would be counted on top of the overall budget, so
-      // drop everything except the single "total" row.
-      const totalRow = storedBudgets.find((b) => b.categoryId === TOTAL_BUDGET_KEY);
-      const migratedBudgets = totalRow ? [totalRow] : [];
-      setBudgets(migratedBudgets);
-      if (migratedBudgets.length !== storedBudgets.length) {
-        await writeCollection('budgets', migratedBudgets);
+      // The budget used to live as a one-row collection keyed "total", itself a
+      // leftover from per-category budgets. Lift it to a plain value once.
+      if (storedBudget !== null) {
+        setTotalBudgetState(Number(storedBudget) || 0);
+      } else {
+        const legacy = legacyBudgets.find((b) => b.categoryId === 'total')?.monthlyLimit ?? 0;
+        setTotalBudgetState(legacy);
+        if (legacy) await writeValue('budget', String(legacy));
       }
+      if (legacyBudgets.length) await writeCollection('budgets', []);
 
       const migrated = storedTransactions.map(migrateTransaction);
       const { rules, generated } = catchUpRules(storedRules, toISODate(new Date()));
@@ -162,11 +157,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     },
     []
   );
-
-  const persistBudgets = useCallback(async (next: Budget[]) => {
-    setBudgets(next);
-    await writeCollection('budgets', next);
-  }, []);
 
   const persistRules = useCallback(async (next: RecurringRule[]) => {
     setRecurringRules(next);
@@ -226,15 +216,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [transactions]
   );
 
-  // Always writes exactly one row, so repeated edits replace the budget rather
-  // than accumulating alongside it.
-  const setTotalBudget = useCallback(
-    async (amount: number) => {
-      const monthlyLimit = Number.isFinite(amount) && amount > 0 ? amount : 0;
-      await persistBudgets([{ categoryId: TOTAL_BUDGET_KEY, monthlyLimit }]);
-    },
-    [persistBudgets]
-  );
+  const setTotalBudget = useCallback(async (amount: number) => {
+    const next = Number.isFinite(amount) && amount > 0 ? amount : 0;
+    setTotalBudgetState(next);
+    await writeValue('budget', String(next));
+  }, []);
 
   const addRecurringRule = useCallback(
     async (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => {
@@ -273,7 +259,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await clearAll();
     transactionsRef.current = [];
     setTransactions([]);
-    setBudgets([]);
+    setTotalBudgetState(0);
     setRecurringRules([]);
   }, []);
 
@@ -320,11 +306,6 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         )
         .reduce((sum, t) => sum + t.amount, 0),
     [transactions]
-  );
-
-  const totalBudget = useMemo(
-    () => budgets.find((b) => b.categoryId === TOTAL_BUDGET_KEY)?.monthlyLimit ?? 0,
-    [budgets]
   );
 
   const currency = useMemo(() => getCurrency(currencyCode), [currencyCode]);

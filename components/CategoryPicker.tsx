@@ -21,15 +21,17 @@ export function CategoryPicker({ value, onChange, type }: CategoryPickerProps) {
           <Pressable
             key={category.id}
             onPress={() => onChange(category.id)}
-            className="items-center px-3 py-2 rounded-2xl border"
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            className="items-center px-3 py-2.5 rounded-xl border"
             style={{
-              backgroundColor: selected ? `${category.color}1A` : colors.surface,
+              backgroundColor: selected ? `${category.color}1F` : 'transparent',
               borderColor: selected ? category.color : colors.border,
             }}
           >
             <Text className="text-lg">{category.icon}</Text>
             <Text
-              className="text-[11px] mt-1 font-medium"
+              className="text-[11px] mt-1 font-ui"
               style={{ color: selected ? category.color : colors['ink-muted'] }}
             >
               {category.label}
@@ -41,6 +43,11 @@ export function CategoryPicker({ value, onChange, type }: CategoryPickerProps) {
   );
 }
 
+/**
+ * Filter and option chip. Unselected chips carry no fill and no visible rule,
+ * so a strip of nineteen categories reads as a line of words and only the
+ * active one registers as a control.
+ */
 export function CategoryFilterChip({
   label,
   selected,
@@ -53,19 +60,19 @@ export function CategoryFilterChip({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const tint = color ?? colors.accent;
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
       className="px-3 py-1.5 rounded-full border mr-2"
       style={{
-        backgroundColor: selected ? (color ? `${color}1A` : colors['accent-light']) : colors.surface,
-        borderColor: selected ? (color ?? colors.accent) : colors.border,
+        backgroundColor: selected ? `${tint}1F` : 'transparent',
+        borderColor: selected ? tint : 'transparent',
       }}
     >
-      <Text
-        className="text-xs font-medium"
-        style={{ color: selected ? (color ?? colors.accent) : colors['ink-muted'] }}
-      >
+      <Text className="text-xs font-ui" style={{ color: selected ? tint : colors['ink-muted'] }}>
         {label}
       </Text>
     </Pressable>

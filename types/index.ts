@@ -26,11 +26,6 @@ export interface Transaction {
   recurringRuleId?: string;
 }
 
-export interface Budget {
-  categoryId: string;
-  monthlyLimit: number;
-}
-
 export interface TransactionDraft {
   type: TransactionType;
   amount: string;

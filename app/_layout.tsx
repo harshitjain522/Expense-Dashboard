@@ -29,7 +29,7 @@ function RootStack() {
   // Imported per weight rather than from the package root: Metro does not
   // tree-shake, so the root import would bundle all eighteen cuts of each
   // family for the six we actually use.
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Fraunces_700Bold,
     IBMPlexSans_400Regular,
     IBMPlexSans_500Medium,
@@ -55,8 +55,11 @@ function RootStack() {
   };
 
   // Hold on the painted background rather than rendering in the system font
-  // and reflowing a beat later.
-  if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  // and reflowing a beat later. On a load failure carry on regardless: the
+  // system font is a far better outcome than a blank screen with no way out.
+  if (!fontsLoaded && !fontError) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
 
   return (
     <NavigationThemeProvider value={navigationTheme}>

@@ -18,9 +18,13 @@ const THEME_OPTIONS: { value: ThemePreference; label: string; hint: string }[] =
   { value: 'dark', label: 'Dark', hint: 'Always dark' },
 ];
 
-/** Group heading. Sits outside the panel so the panel itself needs no border. */
+/**
+ * Group heading. Sits outside the panel so the panel itself needs no border,
+ * which means proximity is the only thing tying the two together: keep the
+ * space below it far smaller than the space above.
+ */
 function GroupLabel({ children }: { children: string }) {
-  return <Text className="text-ink-muted text-[13px] font-ui mb-2 mt-1">{children}</Text>;
+  return <Text className="text-ink-muted text-[13px] font-ui mt-6 mb-2">{children}</Text>;
 }
 
 function Panel({ children }: { children: React.ReactNode }) {
@@ -101,7 +105,7 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, gap: 14 }}>
+    <ScrollView className="flex-1 bg-background" contentContainerStyle={{ padding: 20, paddingTop: 4, paddingBottom: 32 }}>
       <GroupLabel>Appearance</GroupLabel>
       <Panel>
         {THEME_OPTIONS.map((option, index) => {

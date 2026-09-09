@@ -90,6 +90,14 @@ function RootStack() {
           }}
         />
         <Stack.Screen
+          name="import-sms"
+          options={{
+            presentation: 'modal',
+            headerShown: true,
+            title: 'Import from messages',
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             presentation: 'modal',

@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+modules/*/android/build/
+modules/*/android/.cxx/
+modules/*/android/.gradle/
+
+# IDE
+.idea/
+
+# downloaded package tarballs
+*.tgz

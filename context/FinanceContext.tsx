@@ -26,6 +26,9 @@ interface FinanceContextValue {
   transactions: Transaction[];
   isLoading: boolean;
   addTransaction: (draft: TransactionDraft) => Promise<void>;
+  addTransactions: (drafts: TransactionDraft[]) => Promise<void>;
+  /** Inbox ids already turned into transactions, so a re-scan skips them. */
+  importedSmsIds: Set<string>;
   updateTransaction: (id: string, draft: TransactionDraft) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   getTransaction: (id: string) => Transaction | undefined;
@@ -49,6 +52,22 @@ const FinanceContext = createContext<FinanceContextValue | undefined>(undefined)
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function buildTransaction(draft: TransactionDraft): Transaction {
+  const now = new Date().toISOString();
+  return {
+    id: generateId(),
+    type: draft.type,
+    amount: Number(draft.amount) || 0,
+    categoryId: draft.categoryId,
+    date: draft.date,
+    note: draft.note.trim(),
+    paymentMethod: draft.paymentMethod,
+    createdAt: now,
+    updatedAt: now,
+    ...(draft.smsId ? { smsId: draft.smsId } : {}),
+  };
 }
 
 /** Rows written before income tracking existed are all expenses. */
@@ -165,19 +184,24 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const addTransaction = useCallback(
     async (draft: TransactionDraft) => {
-      const now = new Date().toISOString();
-      const transaction: Transaction = {
-        id: generateId(),
-        type: draft.type,
-        amount: Number(draft.amount) || 0,
-        categoryId: draft.categoryId,
-        date: draft.date,
-        note: draft.note.trim(),
-        paymentMethod: draft.paymentMethod,
-        createdAt: now,
-        updatedAt: now,
-      };
+      const transaction = buildTransaction(draft);
       await persistTransactions((prev) => [transaction, ...prev]);
+    },
+    [persistTransactions]
+  );
+
+  /**
+   * One write for the whole batch. The SMS import adds dozens at a time, and
+   * looping `addTransaction` would serialise a full re-serialise of the store
+   * per row.
+   */
+  const addTransactions = useCallback(
+    async (drafts: TransactionDraft[]) => {
+      if (!drafts.length) return;
+      const created = drafts.map(buildTransaction);
+      await persistTransactions((prev) =>
+        [...created, ...prev].sort((a, b) => b.date.localeCompare(a.date))
+      );
     },
     [persistTransactions]
   );
@@ -308,6 +332,13 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [transactions]
   );
 
+  // ponytail: derived, so deleting an imported row makes the next scan offer it
+  // again. Persist a dismissed-id set if that turns out to be irritating.
+  const importedSmsIds = useMemo(
+    () => new Set(transactions.map((t) => t.smsId).filter((id): id is string => Boolean(id))),
+    [transactions]
+  );
+
   const currency = useMemo(() => getCurrency(currencyCode), [currencyCode]);
 
   const formatAmount = useCallback((value: number) => formatCurrency(value, currency), [currency]);
@@ -317,6 +348,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       transactions,
       isLoading,
       addTransaction,
+      addTransactions,
+      importedSmsIds,
       updateTransaction,
       deleteTransaction,
       getTransaction,
@@ -338,6 +371,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       transactions,
       isLoading,
       addTransaction,
+      addTransactions,
+      importedSmsIds,
       updateTransaction,
       deleteTransaction,
       getTransaction,

@@ -24,6 +24,8 @@ export interface Transaction {
   updatedAt: string;
   /** Set when the row was generated from a recurring rule. */
   recurringRuleId?: string;
+  /** Inbox id of the SMS this was imported from. Blocks a second import. */
+  smsId?: string;
 }
 
 export interface TransactionDraft {
@@ -33,6 +35,7 @@ export interface TransactionDraft {
   date: string;
   note: string;
   paymentMethod: PaymentMethod;
+  smsId?: string;
 }
 
 /**

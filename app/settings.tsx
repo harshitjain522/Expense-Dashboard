@@ -9,6 +9,7 @@ import type { ThemePreference } from '@/constants/theme';
 import { useFinance } from '@/context/FinanceContext';
 import { useLock } from '@/context/LockContext';
 import { useTheme } from '@/context/ThemeContext';
+import { isSupported as smsImportSupported } from '@/modules/sms-inbox';
 import { transactionsToCsv } from '@/utils/export';
 import { toISODate } from '@/utils/format';
 
@@ -167,6 +168,21 @@ export default function SettingsScreen() {
           </View>
           <Text className="text-ink-faint text-lg font-body">›</Text>
         </Pressable>
+        {smsImportSupported && (
+          <Pressable
+            onPress={() => router.push('/import-sms')}
+            accessibilityRole="button"
+            className="px-4 py-3.5 flex-row items-center justify-between border-t border-border"
+          >
+            <View className="flex-1 pr-3">
+              <Text className="text-ink text-sm font-ui">Import from messages</Text>
+              <Text className="text-ink-muted text-xs font-body mt-0.5">
+                Read bank and UPI alerts out of your SMS inbox
+              </Text>
+            </View>
+            <Text className="text-ink-faint text-lg font-body">›</Text>
+          </Pressable>
+        )}
       </Panel>
 
       <GroupLabel>Monthly budget</GroupLabel>

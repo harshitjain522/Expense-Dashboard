@@ -62,3 +62,13 @@ export interface TransactionFilters {
   query?: string;
   type?: TransactionType;
 }
+
+/** Full-data snapshot for manual backup/restore. Amounts are in INR, same as storage. */
+export interface BackupPayload {
+  version: 1;
+  exportedAt: string;
+  transactions: Transaction[];
+  recurringRules: RecurringRule[];
+  totalBudget: number;
+  currencyCode: string;
+}

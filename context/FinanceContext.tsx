@@ -20,6 +20,7 @@ import {
 } from '@/utils/format';
 import { fetchRate } from '@/utils/exchangeRates';
 import type {
+  BackupPayload,
   RecurringRule,
   Transaction,
   TransactionDraft,
@@ -57,6 +58,9 @@ interface FinanceContextValue {
   /** Converts a stored (INR) amount to the display currency, for pre-filling an editable amount field. */
   toDisplayAmount: (inrAmount: number) => number;
   clearAllData: () => Promise<void>;
+  exportData: () => BackupPayload;
+  /** Replaces all data with a validated backup payload. Amounts are already INR - no conversion. */
+  restoreData: (payload: BackupPayload) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextValue | undefined>(undefined);
@@ -81,9 +85,10 @@ function buildTransaction(draft: TransactionDraft): Transaction {
   };
 }
 
-/** Rows written before income tracking existed are all expenses. */
+/** Rows written before income tracking existed, or from a foreign/corrupt row, are all expenses. */
 function migrateTransaction(t: Transaction): Transaction {
-  return t.type ? t : { ...t, type: 'expense' };
+  const type: TransactionType = t.type === 'income' ? 'income' : 'expense';
+  return type === t.type ? t : { ...t, type };
 }
 
 /**
@@ -120,6 +125,26 @@ function catchUpRules(
   });
 
   return { rules: advanced, generated };
+}
+
+/**
+ * Migrates and catches up a raw (loaded-from-disk or restored-from-backup)
+ * transactions/rules pair. The mount effect and `restoreData` both need this
+ * exact sequence, so it lives in one place rather than two copies drifting
+ * apart - a restored rule with a stale `nextDate` must catch up immediately
+ * just like one loaded at startup does.
+ */
+function hydrateLoadedData(
+  rawTransactions: Transaction[],
+  rawRules: RecurringRule[],
+  today: string
+): { transactions: Transaction[]; recurringRules: RecurringRule[]; generated: Transaction[] } {
+  const migrated = rawTransactions.map(migrateTransaction);
+  const { rules, generated } = catchUpRules(rawRules, today);
+  const transactions = generated.length
+    ? [...generated, ...migrated].sort((a, b) => b.date.localeCompare(a.date))
+    : migrated;
+  return { transactions, recurringRules: rules, generated };
 }
 
 /**
@@ -161,11 +186,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
       if (legacyBudgets.length) await writeCollection('budgets', []);
 
-      const migrated = storedTransactions.map(migrateTransaction);
-      const { rules, generated } = catchUpRules(storedRules, toISODate(new Date()));
-      const nextTransactions = generated.length
-        ? [...generated, ...migrated].sort((a, b) => b.date.localeCompare(a.date))
-        : migrated;
+      const { transactions: nextTransactions, recurringRules: rules, generated } =
+        hydrateLoadedData(storedTransactions, storedRules, toISODate(new Date()));
 
       setTransactions(nextTransactions);
       transactionsRef.current = nextTransactions;
@@ -346,6 +368,53 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setRecurringRules([]);
   }, []);
 
+  const exportData = useCallback(
+    (): BackupPayload => ({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      transactions,
+      recurringRules,
+      totalBudget,
+      currencyCode,
+    }),
+    [transactions, recurringRules, totalBudget, currencyCode]
+  );
+
+  /**
+   * Full replace, not a merge: restoring is a deliberate "go back to this
+   * snapshot" action (same posture as clearAllData), not an import. A rule's
+   * nextDate goes through the same catch-up path the mount effect uses, so a
+   * backup made weeks ago produces its overdue transactions immediately
+   * instead of waiting for the next relaunch.
+   *
+   * The budget is written directly rather than through `setTotalBudget`:
+   * that function converts its input from the display currency to INR, but a
+   * backup's totalBudget is already INR, so routing it through there would
+   * convert it a second time.
+   */
+  const restoreData = useCallback(
+    async (payload: BackupPayload) => {
+      const { transactions: nextTransactions, recurringRules: nextRules } = hydrateLoadedData(
+        payload.transactions,
+        payload.recurringRules,
+        toISODate(new Date())
+      );
+      await persistTransactions(() => nextTransactions);
+      await persistRules(nextRules);
+
+      const nextBudget =
+        Number.isFinite(payload.totalBudget) && payload.totalBudget > 0 ? payload.totalBudget : 0;
+      setTotalBudgetState(nextBudget);
+      await writeValue('budget', String(nextBudget));
+
+      // The financial data above is the part that matters; if the currency's
+      // rate can't be fetched right now, leave the display currency as-is
+      // rather than treating a network hiccup as a failed restore.
+      await setCurrencyCode(payload.currencyCode).catch(() => {});
+    },
+    [persistTransactions, persistRules, setCurrencyCode]
+  );
+
   const filterTransactions = useCallback(
     (filters: TransactionFilters) => {
       return transactions.filter((t) => {
@@ -429,6 +498,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       formatAmount,
       toDisplayAmount,
       clearAllData,
+      exportData,
+      restoreData,
     }),
     [
       transactions,
@@ -453,6 +524,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       formatAmount,
       toDisplayAmount,
       clearAllData,
+      exportData,
+      restoreData,
     ]
   );
 

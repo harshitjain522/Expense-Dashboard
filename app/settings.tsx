@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -19,6 +20,7 @@ import { useFinance } from '@/context/FinanceContext';
 import { useLock } from '@/context/LockContext';
 import { useTheme } from '@/context/ThemeContext';
 import { isSupported as smsImportSupported } from '@/modules/sms-inbox';
+import { parseBackupPayload } from '@/utils/backup';
 import { transactionsToCsv } from '@/utils/export';
 import { toISODate } from '@/utils/format';
 
@@ -53,6 +55,8 @@ export default function SettingsScreen() {
     recurringRules,
     clearAllData,
     toDisplayAmount,
+    exportData,
+    restoreData,
   } = useFinance();
   const {
     available: biometricsAvailable,
@@ -115,6 +119,59 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       Alert.alert('Export failed', String(error));
+    }
+  }
+
+  async function backupData() {
+    try {
+      const payload = exportData();
+      const file = new File(Paths.cache, `spent-backup-${toISODate(new Date())}.json`);
+      file.create({ overwrite: true });
+      file.write(JSON.stringify(payload, null, 2));
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'application/json',
+          dialogTitle: 'Back up data',
+        });
+      } else {
+        Alert.alert('Sharing unavailable', `The file was written to ${file.uri}`);
+      }
+    } catch (error) {
+      Alert.alert('Backup failed', String(error));
+    }
+  }
+
+  async function restoreFromBackup() {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: 'application/json' });
+      if (picked.canceled) return;
+
+      const text = await new File(picked.assets[0].uri).text();
+      const payload = parseBackupPayload(JSON.parse(text));
+      if (!payload) {
+        Alert.alert('Invalid backup file', "This doesn't look like a Spent backup.");
+        return;
+      }
+
+      const madeOn = new Date(payload.exportedAt).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+      Alert.alert(
+        'Restore this backup?',
+        `Made on ${madeOn}. Every transaction, budget, recurring rule and the currency on this device will be replaced. This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Restore',
+            style: 'destructive',
+            onPress: () => void restoreData(payload),
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Restore failed', String(error));
     }
   }
 
@@ -297,6 +354,20 @@ export default function SettingsScreen() {
             className="items-center py-3 rounded-xl border border-border"
           >
             <Text className="text-ink font-ui">Export as CSV</Text>
+          </Pressable>
+          <Pressable
+            onPress={backupData}
+            accessibilityRole="button"
+            className="mt-2 items-center py-3 rounded-xl border border-border"
+          >
+            <Text className="text-ink font-ui">Back up data</Text>
+          </Pressable>
+          <Pressable
+            onPress={restoreFromBackup}
+            accessibilityRole="button"
+            className="mt-2 items-center py-3 rounded-xl border border-border"
+          >
+            <Text className="text-ink font-ui">Restore from backup</Text>
           </Pressable>
           <Pressable
             onPress={confirmClear}

@@ -10,7 +10,15 @@ import React, {
 
 import { DEFAULT_CURRENCY_CODE, getCurrency, type Currency } from '@/constants/currencies';
 import { clearAll, readCollection, readValue, writeCollection, writeValue } from '@/utils/storage';
-import { advanceDate, currentMonthKey, formatCurrency, monthKey, toISODate } from '@/utils/format';
+import {
+  advanceDate,
+  convertAmount,
+  currentMonthKey,
+  formatCurrency,
+  monthKey,
+  toISODate,
+} from '@/utils/format';
+import { fetchRate } from '@/utils/exchangeRates';
 import type {
   RecurringRule,
   Transaction,
@@ -42,9 +50,12 @@ interface FinanceContextValue {
   addRecurringRule: (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => Promise<void>;
   deleteRecurringRule: (id: string) => Promise<void>;
   currency: Currency;
+  /** Switches the display currency. Throws if the rate lookup fails, leaving the current currency in place. */
   setCurrencyCode: (code: string) => Promise<void>;
   /** Formats in the chosen currency. Screens use this rather than formatCurrency. */
   formatAmount: (value: number) => string;
+  /** Converts a stored (INR) amount to the display currency, for pre-filling an editable amount field. */
+  toDisplayAmount: (inrAmount: number) => number;
   clearAllData: () => Promise<void>;
 }
 
@@ -111,23 +122,32 @@ function catchUpRules(
   return { rules: advanced, generated };
 }
 
+/**
+ * Every stored amount (transactions, recurring rules, the budget) is always in
+ * INR, regardless of `currency`. `currency` is purely a display preference:
+ * `displayRate` (units of it per 1 INR) converts on the way out to a screen
+ * and on the way in from one, so switching currency is a cheap rate fetch
+ * instead of rewriting every record.
+ */
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const transactionsRef = useRef<Transaction[]>([]);
   const [totalBudget, setTotalBudgetState] = useState(0);
   const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
   const [currencyCode, setCurrencyCodeState] = useState(DEFAULT_CURRENCY_CODE);
+  const [displayRate, setDisplayRate] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const [storedTransactions, storedBudget, legacyBudgets, storedRules, storedCurrency] =
+      const [storedTransactions, storedBudget, legacyBudgets, storedRules, storedCurrency, storedRate] =
         await Promise.all([
           readCollection<Transaction>('transactions'),
           readValue('budget'),
           readCollection<{ categoryId: string; monthlyLimit: number }>('budgets'),
           readCollection<RecurringRule>('recurring'),
           readValue('currency'),
+          readValue('displayRate'),
         ]);
 
       // The budget used to live as a one-row collection keyed "total", itself a
@@ -151,6 +171,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       transactionsRef.current = nextTransactions;
       setRecurringRules(rules);
       if (storedCurrency) setCurrencyCodeState(storedCurrency);
+
+      if (storedCurrency && storedCurrency !== 'INR') {
+        const cachedRate = Number(storedRate);
+        if (Number.isFinite(cachedRate) && cachedRate > 0) setDisplayRate(cachedRate);
+        // Refresh in the background so a stale cached rate can't block startup.
+        fetchRate('INR', storedCurrency)
+          .then((rate) => {
+            setDisplayRate(rate);
+            void writeValue('displayRate', String(rate));
+          })
+          .catch(() => {});
+      }
 
       if (generated.length) {
         await writeCollection('transactions', nextTransactions);
@@ -182,18 +214,32 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     await writeCollection('recurring', next);
   }, []);
 
+  const toDisplayAmount = useCallback(
+    (inrAmount: number) => convertAmount(inrAmount, displayRate),
+    [displayRate]
+  );
+  const toBaseAmount = useCallback(
+    (displayAmount: number) => convertAmount(displayAmount, 1 / displayRate),
+    [displayRate]
+  );
+
   const addTransaction = useCallback(
     async (draft: TransactionDraft) => {
-      const transaction = buildTransaction(draft);
+      const transaction = buildTransaction({
+        ...draft,
+        amount: String(toBaseAmount(Number(draft.amount) || 0)),
+      });
       await persistTransactions((prev) => [transaction, ...prev]);
     },
-    [persistTransactions]
+    [persistTransactions, toBaseAmount]
   );
 
   /**
    * One write for the whole batch. The SMS import adds dozens at a time, and
    * looping `addTransaction` would serialise a full re-serialise of the store
-   * per row.
+   * per row. Unlike `addTransaction`, amounts here are NOT converted: the SMS
+   * parser already extracts real INR figures from Indian bank alerts, so
+   * they're in the base currency already, not the display currency.
    */
   const addTransactions = useCallback(
     async (drafts: TransactionDraft[]) => {
@@ -214,7 +260,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
             ? {
                 ...t,
                 type: draft.type,
-                amount: Number(draft.amount) || 0,
+                amount: toBaseAmount(Number(draft.amount) || 0),
                 categoryId: draft.categoryId,
                 date: draft.date,
                 note: draft.note.trim(),
@@ -225,7 +271,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         )
       );
     },
-    [persistTransactions]
+    [persistTransactions, toBaseAmount]
   );
 
   const deleteTransaction = useCallback(
@@ -240,16 +286,21 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [transactions]
   );
 
-  const setTotalBudget = useCallback(async (amount: number) => {
-    const next = Number.isFinite(amount) && amount > 0 ? amount : 0;
-    setTotalBudgetState(next);
-    await writeValue('budget', String(next));
-  }, []);
+  const setTotalBudget = useCallback(
+    async (amount: number) => {
+      const clamped = Number.isFinite(amount) && amount > 0 ? amount : 0;
+      const next = toBaseAmount(clamped);
+      setTotalBudgetState(next);
+      await writeValue('budget', String(next));
+    },
+    [toBaseAmount]
+  );
 
   const addRecurringRule = useCallback(
     async (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => {
       const created: RecurringRule = {
         ...rule,
+        amount: toBaseAmount(rule.amount),
         id: generateId(),
         createdAt: new Date().toISOString(),
       };
@@ -263,7 +314,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         );
       }
     },
-    [recurringRules, persistRules, persistTransactions]
+    [recurringRules, persistRules, persistTransactions, toBaseAmount]
   );
 
   const deleteRecurringRule = useCallback(
@@ -274,10 +325,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [recurringRules, persistRules]
   );
 
-  const setCurrencyCode = useCallback(async (code: string) => {
-    setCurrencyCodeState(code);
-    await writeValue('currency', code);
-  }, []);
+  const setCurrencyCode = useCallback(
+    async (code: string) => {
+      if (code === currencyCode) return;
+      const rate = code === 'INR' ? 1 : await fetchRate('INR', code);
+
+      setDisplayRate(rate);
+      await writeValue('displayRate', String(rate));
+      setCurrencyCodeState(code);
+      await writeValue('currency', code);
+    },
+    [currencyCode]
+  );
 
   const clearAllData = useCallback(async () => {
     await clearAll();
@@ -341,7 +400,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const currency = useMemo(() => getCurrency(currencyCode), [currencyCode]);
 
-  const formatAmount = useCallback((value: number) => formatCurrency(value, currency), [currency]);
+  const formatAmount = useCallback(
+    (value: number) => formatCurrency(toDisplayAmount(value), currency),
+    [toDisplayAmount, currency]
+  );
 
   const value = useMemo<FinanceContextValue>(
     () => ({
@@ -365,6 +427,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       currency,
       setCurrencyCode,
       formatAmount,
+      toDisplayAmount,
       clearAllData,
     }),
     [
@@ -388,6 +451,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       currency,
       setCurrencyCode,
       formatAmount,
+      toDisplayAmount,
       clearAllData,
     ]
   );

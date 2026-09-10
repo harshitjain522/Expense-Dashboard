@@ -43,7 +43,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test:parser": "npx --yes tsx utils/smsParser.test.ts"
+    "test:parser": "npx --yes tsx utils/smsParser.test.ts",
+    "test:format": "npx --yes tsx utils/format.test.ts"
   },
   "private": true
 }

@@ -9,6 +9,11 @@ export function formatCurrency(value: number, currency: Currency): string {
   })}`;
 }
 
+/** Rounds to cents so repeated currency switches don't accumulate float noise. */
+export function convertAmount(amount: number, rate: number): number {
+  return Math.round(amount * rate * 100) / 100;
+}
+
 /**
  * Formats a Date as YYYY-MM-DD using local calendar fields. Using
  * `toISOString().slice(0, 10)` instead would convert to UTC first, landing on

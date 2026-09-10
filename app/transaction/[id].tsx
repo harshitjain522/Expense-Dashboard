@@ -31,8 +31,14 @@ export default function TransactionFormScreen() {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const isNew = id === 'new';
-  const { getTransaction, addTransaction, updateTransaction, deleteTransaction, currency } =
-    useFinance();
+  const {
+    getTransaction,
+    addTransaction,
+    updateTransaction,
+    deleteTransaction,
+    currency,
+    toDisplayAmount,
+  } = useFinance();
 
   const [draft, setDraft] = useState<TransactionDraft>(createEmptyDraft);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -52,13 +58,13 @@ export default function TransactionFormScreen() {
     hydrated.current = true;
     setDraft({
       type: existing.type,
-      amount: String(existing.amount),
+      amount: String(toDisplayAmount(existing.amount)),
       categoryId: existing.categoryId,
       date: existing.date,
       note: existing.note,
       paymentMethod: existing.paymentMethod,
     });
-  }, [existing]);
+  }, [existing, toDisplayAmount]);
 
   // The two category lists share no ids, so switching type must move the
   // selection onto a valid category instead of leaving a stale one behind.

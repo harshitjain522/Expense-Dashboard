@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -43,6 +52,7 @@ export default function SettingsScreen() {
     setCurrencyCode,
     recurringRules,
     clearAllData,
+    toDisplayAmount,
   } = useFinance();
   const {
     available: biometricsAvailable,
@@ -52,6 +62,7 @@ export default function SettingsScreen() {
 
   const [draft, setDraft] = useState('');
   const [saved, setSaved] = useState(false);
+  const [convertingTo, setConvertingTo] = useState<string | null>(null);
   const hydrated = useRef(false);
 
   // The budget loads asynchronously, so the stored amount may not be there on
@@ -60,12 +71,27 @@ export default function SettingsScreen() {
   useEffect(() => {
     if (hydrated.current || isLoading) return;
     hydrated.current = true;
-    if (totalBudget > 0) setDraft(String(totalBudget));
-  }, [isLoading, totalBudget]);
+    if (totalBudget > 0) setDraft(String(toDisplayAmount(totalBudget)));
+  }, [isLoading, totalBudget, toDisplayAmount]);
 
   async function saveBudget() {
     await setTotalBudget(Number(draft));
     setSaved(true);
+  }
+
+  async function changeCurrency(code: string) {
+    if (code === currency.code || convertingTo) return;
+    setConvertingTo(code);
+    try {
+      await setCurrencyCode(code);
+    } catch {
+      Alert.alert(
+        'Currency change failed',
+        'Could not fetch exchange rates. Check your connection and try again.'
+      );
+    } finally {
+      setConvertingTo(null);
+    }
   }
 
   async function exportCsv() {
@@ -76,7 +102,9 @@ export default function SettingsScreen() {
     try {
       const file = new File(Paths.cache, `expenses-${toISODate(new Date())}.csv`);
       file.create({ overwrite: true });
-      file.write(transactionsToCsv(transactions));
+      // Amounts are always stored in INR; export what's on screen, not the base figure.
+      const displayed = transactions.map((t) => ({ ...t, amount: toDisplayAmount(t.amount) }));
+      file.write(transactionsToCsv(displayed));
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(file.uri, {
           mimeType: 'text/csv',
@@ -216,7 +244,7 @@ export default function SettingsScreen() {
       <Panel>
         <View className="p-4">
           <Text className="text-ink-muted text-xs font-body mb-3">
-            Changes how every amount is shown
+            Converts every amount to the new currency using live exchange rates
           </Text>
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
             {CURRENCIES.map((option) => {
@@ -224,13 +252,15 @@ export default function SettingsScreen() {
               return (
                 <Pressable
                   key={option.code}
-                  onPress={() => void setCurrencyCode(option.code)}
+                  onPress={() => void changeCurrency(option.code)}
+                  disabled={!!convertingTo}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected }}
+                  accessibilityState={{ selected, disabled: !!convertingTo }}
                   className="px-3 py-2 rounded-xl border"
                   style={{
                     backgroundColor: selected ? colors['accent-light'] : 'transparent',
                     borderColor: selected ? colors.accent : colors.border,
+                    opacity: convertingTo && !selected ? 0.5 : 1,
                   }}
                 >
                   <Text
@@ -243,6 +273,14 @@ export default function SettingsScreen() {
               );
             })}
           </View>
+          {convertingTo && (
+            <View className="flex-row items-center mt-3" style={{ gap: 6 }}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text className="text-ink-muted text-xs font-body">
+                Converting to {convertingTo}…
+              </Text>
+            </View>
+          )}
         </View>
       </Panel>
 

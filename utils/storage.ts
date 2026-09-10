@@ -40,6 +40,8 @@ const VALUE_KEYS = {
   biometricLock: 'finance:biometric-lock',
   currency: 'finance:currency',
   budget: 'finance:budget',
+  /** Last fetched INR-to-display-currency rate, so a cold start has one before any network call resolves. */
+  displayRate: 'finance:display-rate',
 } as const;
 
 export type ValueKey = keyof typeof VALUE_KEYS;

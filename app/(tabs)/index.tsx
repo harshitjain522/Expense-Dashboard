@@ -56,6 +56,7 @@ export default function DashboardScreen() {
     deleteTransaction,
     isLoading,
     formatAmount,
+    toDisplayAmount,
   } = useFinance();
   const { colors } = useTheme();
   const [key, setKey] = useState(currentMonthKey);
@@ -108,9 +109,13 @@ export default function DashboardScreen() {
     () =>
       Array.from({ length: TREND_MONTHS }, (_, i) => {
         const month = shiftMonthKey(key, i - (TREND_MONTHS - 1));
-        return { monthKey: month, label: monthLabelShort(month), value: monthlySpent(month) };
+        return {
+          monthKey: month,
+          label: monthLabelShort(month),
+          value: toDisplayAmount(monthlySpent(month)),
+        };
       }),
-    [key, monthlySpent]
+    [key, monthlySpent, toDisplayAmount]
   );
 
   const hasTrendData = trendData.some((point) => point.value > 0);

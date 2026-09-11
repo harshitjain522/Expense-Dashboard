@@ -3,8 +3,8 @@ import {
   createMaterialTopTabNavigator,
   MaterialTopTabNavigationEventMap,
   MaterialTopTabNavigationOptions,
-} from '@react-navigation/material-top-tabs';
-import { ParamListBase, TabNavigationState } from '@react-navigation/native';
+} from 'expo-router/js-top-tabs';
+import { ParamListBase, TabNavigationState } from 'expo-router/react-navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';

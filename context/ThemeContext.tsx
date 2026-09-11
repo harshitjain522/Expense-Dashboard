@@ -36,18 +36,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const stored = await readValue('theme');
       if (!isPreference(stored)) return;
       setStoredPreference(stored);
-      Appearance.setColorScheme(stored === 'system' ? null : stored);
+      // 'unspecified' is RN's "follow system" signal (replaced passing `null`).
+      Appearance.setColorScheme(stored === 'system' ? 'unspecified' : stored);
     })();
   }, []);
 
   const setPreference = useCallback(async (next: ThemePreference) => {
     setStoredPreference(next);
     // Also drives the native side: keyboard appearance, system text selection.
-    Appearance.setColorScheme(next === 'system' ? null : next);
+    Appearance.setColorScheme(next === 'system' ? 'unspecified' : next);
     await writeValue('theme', next);
   }, []);
 
-  const scheme: ColorScheme = preference === 'system' ? systemScheme ?? 'light' : preference;
+  // useColorScheme() can also report 'unspecified' (Android) - treat it, and a
+  // missing value, the same way: fall back to light.
+  const scheme: ColorScheme = preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
   const colors = PALETTES[scheme];
 
   const value = useMemo<ThemeContextValue>(

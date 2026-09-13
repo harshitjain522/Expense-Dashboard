@@ -52,6 +52,12 @@ export interface RecurringRule {
   paymentMethod: PaymentMethod;
   frequency: RecurrenceFrequency;
   nextDate: string;
+  /**
+   * Day of the month the rule is meant to land on. `nextDate` can't carry it
+   * alone: after February, a rule for the 31st sits on the 28th. Optional
+   * because rules saved before it existed lack it; loading fills it in.
+   */
+  anchorDay?: number;
   createdAt: string;
 }
 

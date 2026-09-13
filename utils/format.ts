@@ -91,17 +91,32 @@ export function compactAmount(value: number): string {
 /**
  * Moves an ISO date forward by one recurrence step. Months and years go via the
  * 1st and then clamp: adding a month to the 31st with a plain `setMonth` spills
- * into the month after next, so a rule set on the 31st would drift off calendar.
+ * into the month after next. The clamp targets `anchorDay`, not the day of
+ * `iso`: stepping from an already-clamped Feb 28 would otherwise land every
+ * later month on the 28th too.
  */
-export function advanceDate(iso: string, frequency: RecurrenceFrequency): string {
-  const date = fromISODate(iso);
+export function advanceDate(
+  iso: string,
+  frequency: RecurrenceFrequency,
+  anchorDay = fromISODate(iso).getDate()
+): string {
   if (frequency === 'weekly') {
+    const date = fromISODate(iso);
     date.setDate(date.getDate() + 7);
     return toISODate(date);
   }
-  const day = date.getDate();
+  return monthsLater(iso, frequency === 'monthly' ? 1 : 12, anchorDay);
+}
+
+/** Same month as `iso`, on `day` clamped to that month's length. */
+export function alignToDay(iso: string, day: number): string {
+  return monthsLater(iso, 0, day);
+}
+
+function monthsLater(iso: string, months: number, day: number): string {
+  const date = fromISODate(iso);
   date.setDate(1);
-  date.setMonth(date.getMonth() + (frequency === 'monthly' ? 1 : 12));
+  date.setMonth(date.getMonth() + months);
   const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   date.setDate(Math.min(day, lastDayOfMonth));
   return toISODate(date);

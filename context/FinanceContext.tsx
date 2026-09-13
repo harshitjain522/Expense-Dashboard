@@ -12,9 +12,11 @@ import { DEFAULT_CURRENCY_CODE, getCurrency, type Currency } from '@/constants/c
 import { clearAll, readCollection, readValue, writeCollection, writeValue } from '@/utils/storage';
 import {
   advanceDate,
+  alignToDay,
   convertAmount,
   currentMonthKey,
   formatCurrency,
+  fromISODate,
   monthKey,
   toISODate,
 } from '@/utils/format';
@@ -48,7 +50,7 @@ interface FinanceContextValue {
   totalBudget: number;
   setTotalBudget: (amount: number) => Promise<void>;
   recurringRules: RecurringRule[];
-  addRecurringRule: (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => Promise<void>;
+  addRecurringRule: (rule: Omit<RecurringRule, 'id' | 'createdAt' | 'anchorDay'>) => Promise<void>;
   deleteRecurringRule: (id: string) => Promise<void>;
   currency: Currency;
   /** Switches the display currency. Throws if the rate lookup fails, leaving the current currency in place. */
@@ -118,13 +120,33 @@ function catchUpRules(
         updatedAt: now,
         recurringRuleId: rule.id,
       });
-      nextDate = advanceDate(nextDate, rule.frequency);
+      nextDate = advanceDate(nextDate, rule.frequency, rule.anchorDay);
       emitted += 1;
     }
     return nextDate === rule.nextDate ? rule : { ...rule, nextDate };
   });
 
   return { rules: advanced, generated };
+}
+
+/**
+ * Gives a rule saved before `anchorDay` existed its real day back. Such a rule
+ * may already have slid (the 31st became the 28th after February). The first
+ * transaction it generated is dated on its start day - or, with none yet,
+ * `nextDate` still is - so recover the day from there and move the pending
+ * `nextDate` back onto it. Doubles as the guard for a backup's untrusted value.
+ */
+function withAnchorDay(rule: RecurringRule, transactions: Transaction[]): RecurringRule {
+  const day = rule.anchorDay;
+  if (day !== undefined && Number.isInteger(day) && day >= 1 && day <= 31) return rule;
+  const firstDate = transactions.reduce(
+    (first, t) => (t.recurringRuleId === rule.id && t.date < first ? t.date : first),
+    rule.nextDate
+  );
+  const anchorDay = fromISODate(firstDate).getDate();
+  const nextDate =
+    rule.frequency === 'weekly' ? rule.nextDate : alignToDay(rule.nextDate, anchorDay);
+  return { ...rule, anchorDay, nextDate };
 }
 
 /**
@@ -140,7 +162,8 @@ function hydrateLoadedData(
   today: string
 ): { transactions: Transaction[]; recurringRules: RecurringRule[]; generated: Transaction[] } {
   const migrated = rawTransactions.map(migrateTransaction);
-  const { rules, generated } = catchUpRules(rawRules, today);
+  const anchored = rawRules.map((rule) => withAnchorDay(rule, migrated));
+  const { rules, generated } = catchUpRules(anchored, today);
   const transactions = generated.length
     ? [...generated, ...migrated].sort((a, b) => b.date.localeCompare(a.date))
     : migrated;
@@ -206,8 +229,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           .catch(() => {});
       }
 
-      if (generated.length) {
-        await writeCollection('transactions', nextTransactions);
+      if (generated.length) await writeCollection('transactions', nextTransactions);
+      // Rules keep their identity unless catch-up advanced them or an anchor
+      // day was filled in, so this persists a backfill even with nothing due.
+      if (generated.length || rules.some((rule, i) => rule !== storedRules[i])) {
         await writeCollection('recurring', rules);
       }
 
@@ -321,9 +346,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addRecurringRule = useCallback(
-    async (rule: Omit<RecurringRule, 'id' | 'createdAt'>) => {
+    async (rule: Omit<RecurringRule, 'id' | 'createdAt' | 'anchorDay'>) => {
       const created: RecurringRule = {
         ...rule,
+        anchorDay: fromISODate(rule.nextDate).getDate(),
         amount: toBaseAmount(rule.amount),
         id: generateId(),
         createdAt: new Date().toISOString(),

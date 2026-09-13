@@ -1,29 +1,14 @@
-import { withLayoutContext } from 'expo-router';
-import {
-  createMaterialTopTabNavigator,
-  MaterialTopTabNavigationEventMap,
-  MaterialTopTabNavigationOptions,
-} from 'expo-router/js-top-tabs';
-import { ParamListBase, TabNavigationState } from 'expo-router/react-navigation';
+import { TopTabs } from 'expo-router/js-top-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/ThemeContext';
-
-const { Navigator } = createMaterialTopTabNavigator();
-
-const Tabs = withLayoutContext<
-  MaterialTopTabNavigationOptions,
-  typeof Navigator,
-  TabNavigationState<ParamListBase>,
-  MaterialTopTabNavigationEventMap
->(Navigator);
 
 export default function TabsLayout() {
   const bottom = Math.max(useSafeAreaInsets().bottom, 8);
   const { colors } = useTheme();
 
   return (
-    <Tabs
+    <TopTabs
       tabBarPosition="bottom"
       screenOptions={{
         swipeEnabled: true,
@@ -50,8 +35,8 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="history" options={{ title: 'History' }} />
-    </Tabs>
+      <TopTabs.Screen name="index" options={{ title: 'Dashboard' }} />
+      <TopTabs.Screen name="history" options={{ title: 'History' }} />
+    </TopTabs>
   );
 }

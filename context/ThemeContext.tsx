@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Appearance, useColorScheme, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { vars } from 'nativewind';
 
 import {
@@ -48,8 +49,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     await writeValue('theme', next);
   }, []);
 
-  // useColorScheme() can also report 'unspecified' (Android) - treat it, and a
-  // missing value, the same way: fall back to light.
+  // After setColorScheme('unspecified'), RN reports back whatever the system
+  // says - but falls through to the literal 'unspecified' on any platform where
+  // the native module has no answer. Treat that, and a missing value, as light.
   const scheme: ColorScheme = preference === 'system' ? (systemScheme === 'dark' ? 'dark' : 'light') : preference;
   const colors = PALETTES[scheme];
 
@@ -61,6 +63,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={value}>
       <View style={vars(paletteVars(colors))} className="flex-1 bg-background">
+        {/* Driven off the resolved scheme, not `style="auto"`: auto re-reads
+            useColorScheme() and renders light-content over our light palette
+            when the native module reports 'unspecified'. */}
+        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
         {children}
       </View>
     </ThemeContext.Provider>

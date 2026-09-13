@@ -37,10 +37,7 @@
         {
           "faceIDPermission": "Allow Spent to unlock with Face ID"
         }
-      ],
-      "expo-font",
-      "expo-sharing",
-      "expo-status-bar"
+      ]
     ]
   }
 }

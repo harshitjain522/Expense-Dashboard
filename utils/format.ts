@@ -4,12 +4,16 @@ import type { RecurrenceFrequency } from '@/types';
 export function formatCurrency(value: number, currency: Currency): string {
   const sign = value < 0 ? '-' : '';
   const abs = Math.abs(value);
+  // Whole rupees for the base currency; converted amounts keep their cents,
+  // where a rounded dollar can be off by eighty-odd rupees.
+  const digits = currency.code === 'INR' ? 0 : 2;
   return `${sign}${currency.symbol}${abs.toLocaleString(currency.locale, {
-    maximumFractionDigits: 0,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   })}`;
 }
 
-/** Rounds to cents so repeated currency switches don't accumulate float noise. */
+/** Rounds to 2 decimals for display, clearing float noise like 10 * 1.005. */
 export function convertAmount(amount: number, rate: number): number {
   return Math.round(amount * rate * 100) / 100;
 }

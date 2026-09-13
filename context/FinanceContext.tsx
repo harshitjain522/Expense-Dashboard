@@ -240,8 +240,10 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     (inrAmount: number) => convertAmount(inrAmount, displayRate),
     [displayRate]
   );
+  // Not rounded: INR paise are too coarse for currencies worth less than a
+  // rupee (1 INR ~ 1.7 JPY), so ¥100.00 would come back as ¥100.01.
   const toBaseAmount = useCallback(
-    (displayAmount: number) => convertAmount(displayAmount, 1 / displayRate),
+    (displayAmount: number) => displayAmount / displayRate,
     [displayRate]
   );
 
